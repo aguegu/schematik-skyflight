@@ -1,0 +1,34 @@
+# Dependencies and generated browser output
+node_modules/
+dist/
+test-results/
+playwright-report/
+
+# Private hardware backups, local verification and deployment notes
+backups/
+verification/
+*_DEPLOYMENT.md
+
+# Generated firmware (publish source only)
+firmware/**/build/
+*.bin
+*.elf
+*.map
+*.hex
+*.uf2
+*.eep
+coverage/
+
+# Local credentials and OS/editor files
+.env
+.env.*
+.envrc
+.npmrc
+!.env.example
+*.pem
+*.key
+*.log
+*.swp
+.vscode/
+.idea/
+.DS_Store

@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#f1f0e9" />
+  <meta name="description" content="An orange Schematik stunt plane. A wide-open sky. Fly with your MPU6050 or keyboard." />
+  <title>Skyflight — Schematik Flight Lab</title>
+  <link rel="icon" href="/schematik-mark.svg" type="image/svg+xml" />
+</head>
+<body>
+  <div id="world" role="img" aria-label="Orange Schematik stunt plane flying over the Copper Coast. Use keyboard arrows, WASD, touch controls, or a connected tilt sensor to steer."></div>
+  <div class="vignette" aria-hidden="true"></div>
+  <div class="paper-grain" aria-hidden="true"></div>
+  <header>
+    <a class="brand" href="/" aria-label="Schematik Skyflight home"><img src="/schematik-wordmark.svg" alt="Schematik" /><span class="brand-divider"></span><span>FLIGHT LAB <sup>01</sup></span></a>
+    <nav aria-label="Flight controls">
+      <button id="help-button" class="icon-button" aria-label="Controls and wiring help">?</button>
+      <button id="settings-button" class="text-button">Controller <span class="tiny-icon">⌘</span></button>
+      <button id="connect-button" class="connect-button"><span class="status-dot"></span><span id="connect-label">Connect MPU6050</span></button>
+    </nav>
+  </header>
+
+  <main>
+    <section id="intro" class="intro">
+      <div class="eyebrow"><span class="orange-line"></span> HARDWARE MEETS OPEN SKY</div>
+      <div class="edition-number" aria-hidden="true">01</div>
+      <h1>Small sensor.<br />Big <em>adventure.</em></h1>
+      <p class="intro-copy">Your hands are the cockpit. Tilt, climb, and chase the next ring in your very own orange machine.</p>
+      <div class="mode-switch" role="group" aria-label="Flight mode">
+        <button class="mode active" data-mode="rings" aria-pressed="true">Ring run <span>90 SEC</span></button>
+        <button class="mode" data-mode="free" aria-pressed="false">Free flight <span>NO LIMITS</span></button>
+      </div>
+      <button id="start-button" class="primary-button">Let’s fly <span>↗</span></button>
+      <p class="keyboard-hint"><span class="desktop-keys"><kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> or arrow keys · no hardware needed</span><span class="touch-hint">TOUCH TO FLY. NO HARDWARE NEEDED.</span><button id="guide-button" class="text-button">Flight guide ↗</button></p>
+      <div class="intro-details"><span class="ticket-symbol" aria-hidden="true">↗</span><div><b>THE COPPER COAST</b><span>90 seconds of a different perspective.</span></div><span class="ticket-number">VOL.<br /><b>001</b></span></div>
+    </section>
+
+    <div id="showcase-details" class="showcase-details" aria-hidden="true">
+      <div class="expedition-heading"><span>SCHEMATIK FIELD NOTES</span><b>THE COPPER COAST <i>↗</i></b><small>AN EXPERIMENT IN EVERYDAY FLIGHT</small></div>
+      <div class="aircraft-orbit"><span>N</span><i></i></div>
+      <div class="aircraft-spec"><span>EXPERIMENTAL AIRCRAFT</span><b>01</b><small>SINGLE ENGINE<br />UNLIMITED CURIOSITY</small></div>
+    </div>
+    <div id="aircraft-label" class="aircraft-label"><span class="label-line"></span><div><b>S–01 / TANGERINE</b><small>ORANGE BY DESIGN. FREE BY NATURE.</small><span class="aircraft-swatches" aria-hidden="true"><i></i><i></i><i></i></span></div></div>
+
+    <section id="game-hud" class="game-hud" hidden aria-label="Flight score">
+      <div><span class="hud-label">FLIGHT SCORE</span><strong id="score">0000</strong></div>
+      <div class="hud-separator"></div>
+      <div><span class="hud-label" id="timer-label">TIME REMAINING</span><strong id="timer">01:30</strong></div>
+      <div class="hud-separator"></div>
+      <div><span class="hud-label">RINGS</span><strong id="rings">00 <small>/ 00</small></strong></div>
+      <button id="pause-button" class="icon-button" aria-label="Pause flight">Ⅱ</button>
+      <div class="run-progress" aria-hidden="true"><i id="run-progress-fill"></i></div>
+    </section>
+    <div id="combo-indicator" class="combo-indicator" hidden><b id="combo-multiplier">1×</b><span id="combo-copy">FIND YOUR FLOW</span><div id="combo-pips" aria-hidden="true"><i></i><i></i><i></i></div></div>
+    <div id="course-hint" class="course-hint" hidden><span class="live-dot"></span><span id="course-text">FLY THROUGH THE GLOWING RINGS</span></div>
+    <div id="feedback" class="feedback" aria-live="polite"></div>
+
+    <section id="pause-panel" class="center-panel" hidden aria-labelledby="pause-title" aria-describedby="pause-reason">
+      <div class="panel-insignia" aria-hidden="true">Ⅱ</div>
+      <span class="eyebrow">TAKE A BREATHER</span><h2 id="pause-title">Holding pattern.</h2><p id="pause-reason">Your flight is paused. The sky can wait.</p>
+      <div class="pause-log"><span>COPPER COAST / S–01</span><b id="pause-distance">0.00 KM FLOWN</b></div>
+      <button id="resume-button" class="primary-button">Back to the sky <span>↗</span></button>
+      <button class="text-button return-home">End flight & return</button>
+    </section>
+    <section id="result-panel" class="center-panel" hidden aria-labelledby="result-title">
+      <div class="panel-insignia" aria-hidden="true">↗</div>
+      <span class="eyebrow">COPPER COAST / FLIGHT LOG</span><h2 id="result-title">Nice flying.</h2><p id="result-copy"></p>
+      <div class="result-score"><strong id="result-score">0</strong><span>POINTS</span></div>
+      <p id="best-score" class="best-score"></p>
+      <div class="flight-log"><div><b id="result-perfect">00</b><span>PERFECT LINES</span></div><div><b id="result-streak">00</b><span>BEST STREAK</span></div><div><b id="result-accuracy">0%</b><span>RING ACCURACY</span></div></div>
+      <button id="again-button" class="primary-button">Another flight <span>↗</span></button>
+      <button class="text-button return-home">Back to flight lab</button>
+    </section>
+  </main>
+
+  <aside class="telemetry" aria-label="Live telemetry">
+    <div class="telemetry-heading"><span class="live-dot" id="input-dot"></span><span id="input-label">KEYBOARD CONTROL</span><span id="input-rate">STANDBY</span></div>
+    <div class="telemetry-values">
+      <div><span>ROLL</span><b id="roll-value">+00.0<small>°</small></b></div>
+      <div><span>PITCH</span><b id="pitch-value">+00.0<small>°</small></b></div>
+      <div><span title="Simulated flight altitude, not sensor-measured">ALT <em>SIM</em></span><b id="alt-value">024<small>m</small></b></div>
+      <div class="attitude" aria-label="Attitude indicator"><div id="attitude-horizon"></div><i></i></div>
+    </div>
+  </aside>
+  <div class="bottom-center"><span id="bottom-hint">A LITTLE TILT. A WHOLE NEW PERSPECTIVE.</span></div>
+  <aside id="coast-chart" class="coast-chart" aria-label="Illustrated course preview, not GPS">
+    <div class="chart-heading"><span id="chart-label">01 / COASTAL EXPLORER</span><span aria-hidden="true">N ↑</span></div>
+    <svg viewBox="0 0 224 100" role="img" aria-label="Schematic coastal route; live ring positions during flight">
+      <defs><pattern id="chart-grid" width="16" height="16" patternUnits="userSpaceOnUse"><path d="M 16 0 L 0 0 0 16" fill="none" stroke="currentColor" stroke-width=".35" opacity=".2" /></pattern></defs>
+      <rect width="224" height="100" fill="url(#chart-grid)" />
+      <path class="chart-land" d="M0 0H55L61 12 43 23 62 37 48 53 61 63 38 76 44 88 27 100H0ZM224 0H191L180 15 186 27 165 46 177 60 163 78 180 100H224Z" />
+      <path class="chart-contour" d="M0 12L36 9 44 16 25 29 40 43 28 55 39 65 18 80 25 96M224 12L200 18 206 31 184 48 195 62 182 79 200 99" />
+      <path id="chart-route" d="M112 88 Q78 65 117 44 T111 8" />
+      <g id="chart-gates"></g>
+      <g id="chart-plane" transform="translate(112 85)"><circle r="10" /><path d="M0-6 4 5 0 3-4 5Z" /></g>
+      <text x="9" y="94">COPPER COAST</text>
+    </svg>
+    <div class="chart-footer"><span id="chart-detail">A SMALL ESCAPE, BY SCHEMATIK.</span><b id="next-gate-time">↗</b></div>
+  </aside>
+  <div id="touch-controls" hidden aria-label="Touch steering">
+    <div class="bank-pad"><button data-key="ArrowLeft" aria-label="Bank left">←</button><button data-key="ArrowRight" aria-label="Bank right">→</button></div><div class="pitch-pad"><button data-key="ArrowUp" aria-label="Climb">↑</button><button data-key="ArrowDown" aria-label="Descend">↓</button></div>
+  </div>
+  <div id="toast" role="status"></div>
+
+  <dialog id="settings-dialog" aria-labelledby="settings-title">
+    <div class="dialog-header"><span class="eyebrow">THE HUMAN INTERFACE</span><button class="icon-button close-dialog" aria-label="Close controller settings">×</button></div>
+    <h2 id="settings-title">Make it feel right.</h2><p>Connect your controller, hold it in a comfortable neutral position, then zero the tilt.</p>
+    <div class="sensor-card"><span id="sensor-description">No sensor connected · keyboard is ready</span><b id="sensor-angles">ROLL — &nbsp; PITCH —</b></div>
+    <button id="calibrate-button" class="primary-button">Zero current tilt <span>⊕</span></button>
+    <label class="range-label" for="sensitivity">Tilt sensitivity <output id="sensitivity-value">1.0×</output></label>
+    <input id="sensitivity" type="range" min="0.5" max="2" step="0.1" value="1" />
+    <label class="check-label"><input id="invert-roll" type="checkbox" /> Invert roll (left / right)</label>
+    <label class="check-label"><input id="invert-pitch" type="checkbox" /> Invert pitch (up / down)</label>
+    <label class="check-label"><input id="swap-axes" type="checkbox" /> Swap axes (sensor mounted sideways)</label>
+    <p class="controller-note"><span aria-hidden="true">⊕</span> Real roll & pitch. Simulated altitude. Your hands do the rest.</p>
+    <div class="dialog-footer"><span>115200 BAUD · USB SERIAL</span><button id="disconnect-button" class="text-button" disabled>Disconnect</button></div>
+  </dialog>
+
+  <dialog id="help-dialog" aria-labelledby="help-title">
+    <div class="dialog-header"><span class="eyebrow">PREFLIGHT CHECKLIST</span><button class="icon-button close-dialog" aria-label="Close help">×</button></div>
+    <h2 id="help-title">Let your hands fly.</h2>
+    <div class="help-grid"><div><b>01 / Pick your flight</b><p>Ring run: 90 seconds, 100 points per ring. Fly through the center for a 50-point bonus. Consecutive hits build up to a 5× multiplier. Free flight: no timer, just explore.</p></div><div><b>02 / Take control</b><p><kbd>W</kbd> / <kbd>↑</kbd> climb · <kbd>S</kbd> / <kbd>↓</kbd> descend<br /><kbd>A</kbd> / <kbd>←</kbd> left · <kbd>D</kbd> / <kbd>→</kbd> right<br /><kbd>P</kbd> / <kbd>Esc</kbd> pause · <kbd>C</kbd> zero sensor</p></div></div>
+    <h3>Real tilt. Real hardware.</h3><p>Upload <code>firmware/SchematikFlightController/SchematikFlightController.ino</code> to your ESP32-C6 (USB CDC enabled), then open this page in desktop Chrome or Edge. Close the Arduino Serial Monitor before connecting.</p>
+    <table><thead><tr><th>MPU6050 / GY-521</th><th>XIAO ESP32-C6 · verified wiring</th></tr></thead><tbody><tr><td>VCC</td><td>3.3V</td></tr><tr><td>GND</td><td>GND</td></tr><tr><td>SDA · yellow</td><td>D8 / GPIO19</td></tr><tr><td>SCL · orange</td><td>D7 / GPIO17</td></tr><tr><td>AD0</td><td>GND → 0x68</td></tr><tr><td>INT</td><td>Not connected</td></tr></tbody></table>
+    <p class="small-copy">Keep the sensor still for 2 seconds at boot. Uno / classic Nano also supported on A4/A5; see README for level-shifter guidance. This is arcade flight: altitude is simulated, not measured by the MPU6050.</p>
+    <p>Click <b>Connect MPU6050</b>, choose the board, then use <b>Controller → Zero current tilt</b>. Mounting different? Swap or invert axes in Controller.</p>
+  </dialog>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
