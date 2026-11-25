@@ -254,6 +254,8 @@ catch(error) {
 // moon button, remembered in the browser
 let night = false;
 try { night = localStorage.getItem('skyflight-night') === 'on'; } catch { /* optional */ }
+const nightParam = new URLSearchParams(location.search).get('night'); // ?night or ?night=off: a link that says
+if(nightParam !== null) night = nightParam !== 'off';
 function setNight(on) {
   night = on;
   scene?.setNight(on);
