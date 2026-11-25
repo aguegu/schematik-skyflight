@@ -265,6 +265,7 @@ function animate(now) {
       audio.ring(game.combo, event.perfect);
       feedback(`${event.perfect ? 'Perfect line' : 'Ring cleared'} +${event.points}`, `${event.multiplier}× MULTIPLIER · ${game.combo} IN A ROW`, event.perfect ? 'perfect' : 'hit');
     }
+    if(event.type === 'miss') audio.miss();
     if(event.type === 'miss') feedback('Next one is yours.', 'A FRESH LINE. A NEW CHANCE.', 'miss');
     if(event.type === 'finish') { audio.finish(); finish(); }
   }

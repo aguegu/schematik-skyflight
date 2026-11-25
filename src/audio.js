@@ -3,7 +3,8 @@
 // a propeller's flutter on it; the wind is filtered noise that grows louder
 // and brighter as the plane banks and moves. Two recorded sounds from Kenney's
 // Starter Kit 3D Platformer (CC0, public/sounds/CREDITS.md): a ring passed,
-// pitched up as the combo grows, and the end of a run. The audio starts on
+// pitched up as the combo grows, and a falling sound for a ring missed (and,
+// slower, the end of a run). The audio starts on
 // the first flight (browsers allow sound only after a click or a key);
 // M mutes it, remembered in the browser.
 
@@ -101,7 +102,9 @@ export class FlightAudio {
     this.play('coin', rate, perfect ? 0.7 : 0.5);
   }
 
-  finish() { this.play('fall', 1, 0.6); }
+  // a ring missed: the falling sound; the run's end: the same, slower and lower
+  miss() { this.play('fall', 1.1, 0.45); }
+  finish() { this.play('fall', 0.75, 0.6); }
 
   toggleMute() {
     this.muted = !this.muted;
