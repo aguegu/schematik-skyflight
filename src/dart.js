@@ -5,6 +5,9 @@
 // time constant, the gyro's bias averaged at connect). Same interface as
 // SensorSerial: connect(), disconnect(), connected, connecting, live,
 // sample { roll, pitch } in degrees, rate; 'status', 'sample', 'error' events.
+// Pitch is given nose-up positive (the board's x axis as the nose): the
+// firmware's atan2(-ax, ...) is nose-down positive, so its pitch, filtered
+// the same way, is sent negated; roll as the firmware's (right wing down positive).
 import { Mpu6050 } from 'atiic';
 import { Dart, FILTERS } from 'atiic/adapters/dart';
 
@@ -78,7 +81,7 @@ export class SensorDart extends EventTarget {
           roll = alpha * (roll + (g.x - bias.x) * dt) + (1 - alpha) * accelRoll;
           pitch = alpha * (pitch + (g.y - bias.y) * dt) + (1 - alpha) * accelPitch;
         }
-        this.sample = { roll, pitch };
+        this.sample = { roll, pitch: -pitch };
         this.lastSampleAt = now;
         this.timestamps.push(now);
         while (this.timestamps.length && this.timestamps[0] < now - 1000) this.timestamps.shift();
