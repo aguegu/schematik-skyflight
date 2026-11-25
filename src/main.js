@@ -1,11 +1,14 @@
 import './style.css';
 import { FlightGame, sensorInput, damp, SPEED, RUN_SECONDS } from './game.js';
 import { SensorSerial } from './serial.js';
+import { SensorDart } from './dart.js';
 import { FlightScene } from './scene.js';
 
 const $ = id => document.getElementById(id);
 const game = new FlightGame();
-const serial = new SensorSerial();
+// the tilt controller: a Dart USB-to-I2C bridge with an MPU6050 (WebUSB), or
+// with ?serial the original firmware over Web Serial
+const serial = new URLSearchParams(location.search).has('serial') ? new SensorSerial() : new SensorDart();
 const keys = new Set();
 const settings = { sensitivity:1, invertRoll:false, invertPitch:false, swapAxes:false };
 let zero = { roll:0, pitch:0 }, selectedMode = 'rings';
