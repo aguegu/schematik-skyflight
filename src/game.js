@@ -37,7 +37,10 @@ export class FlightGame {
   get remaining() { return Math.max(0, RUN_SECONDS - this.elapsed); }
   get multiplier() { return Math.min(5, 1 + Math.floor(Math.max(0, this.combo - 1) / 3)); }
 
-  update(dt, input = { roll: 0, pitch: 0 }) {
+  // attitude: the sensor's own roll and pitch, degrees, when a tilt
+  // controller is live: the plane then banks and pitches exactly as the
+  // sensor does; without it (keys, touch) the input eases it
+  update(dt, input = { roll: 0, pitch: 0 }, attitude = null) {
     if (this.status !== 'running' || !Number.isFinite(dt) || dt <= 0) return [];
     dt = Math.min(dt, 0.05, this.mode === 'rings' ? this.remaining : Infinity);
     const oldX = this.x, oldY = this.y;
@@ -47,8 +50,13 @@ export class FlightGame {
     this.vy = damp(this.vy, pitch * 12, 4.5, dt);
     this.x = clamp(this.x + this.vx * dt, -52, 52);
     this.y = clamp(this.y + this.vy * dt, 8, 67);
-    this.roll = damp(this.roll, -roll * 0.7, 6, dt);
-    this.pitch = damp(this.pitch, pitch * 0.26, 5, dt);
+    if (attitude) {
+      this.roll = -attitude.roll * RAD_PER_DEG;
+      this.pitch = attitude.pitch * RAD_PER_DEG;
+    } else {
+      this.roll = damp(this.roll, -roll * 0.7, 6, dt);
+      this.pitch = damp(this.pitch, pitch * 0.26, 5, dt);
+    }
     this.elapsed += dt;
     const movement = SPEED * dt;
     this.distance += movement;
@@ -86,6 +94,18 @@ export class FlightGame {
     }
     return events;
   }
+}
+
+const RAD_PER_DEG = Math.PI / 180;
+
+// the sensor's attitude as the plane takes it, degrees: its roll and pitch
+// from the zero (none unless the player sets one), swapped and inverted as
+// the settings say; no dead zone, no limit
+export function sensorAttitude(sample, zero, settings) {
+  let roll = ((sample.roll - zero.roll + 180) % 360 + 360) % 360 - 180;
+  let pitch = sample.pitch - zero.pitch;
+  if (settings.swapAxes) [roll, pitch] = [pitch, roll];
+  return { roll: settings.invertRoll ? -roll : roll, pitch: settings.invertPitch ? -pitch : pitch };
 }
 
 export function sensorInput(sample, zero, settings) {

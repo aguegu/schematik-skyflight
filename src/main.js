@@ -1,5 +1,5 @@
 import './style.css';
-import { FlightGame, sensorInput, damp, SPEED, RUN_SECONDS } from './game.js';
+import { FlightGame, sensorInput, sensorAttitude, damp, SPEED, RUN_SECONDS } from './game.js';
 import { SensorSerial } from './serial.js';
 import { SensorDart } from './dart.js';
 import { FlightScene } from './scene.js';
@@ -13,7 +13,7 @@ const keys = new Set();
 const settings = { sensitivity:1, invertRoll:false, invertPitch:false, swapAxes:false };
 let zero = { roll:0, pitch:0 }, selectedMode = 'rings';
 let toastTimeout, feedbackTimeout, scene, lastTime = performance.now(), wasLive = false;
-let needsZero = false, uiTime = 0, sceneTime = 0;
+let announceReady = false, uiTime = 0, sceneTime = 0;
 let smoothInput = { roll:0, pitch:0 };
 let best = 0;
 let runStats = { perfect:0, bestStreak:0 };
@@ -140,8 +140,8 @@ $('sensitivity').addEventListener('input', () => {
 $('connect-button').addEventListener('click', async () => {
   if(serial.connected) { openDialog('settings-dialog'); return; }
   pause('USB connection setup. Resume once the controller is ready.');
-  needsZero = true;
-  try { await serial.connect(); if(serial.connected) toast('Connected. Keep the sensor still while it calibrates.'); }
+  announceReady = true;
+  try { await serial.connect(); if(serial.connected) toast('Connected. Keep the sensor still for a second while the gyro settles.'); }
   catch(error) {
     if(error.name === 'NotFoundError') toast('No device selected. Keyboard controls are still ready.');
     else toast(error.message || 'Could not open serial port. Close other serial monitors and try again.');
@@ -159,7 +159,9 @@ serial.addEventListener('status', () => {
 });
 serial.addEventListener('error', e => toast(e.detail));
 serial.addEventListener('sample', () => {
-  if(needsZero) { zero = { ...serial.sample }; needsZero = false; toast('Tilt controller ready. Neutral position set automatically.'); }
+  // no offset at the start: the plane follows the sensor's own level (gravity);
+  // C, or Zero current tilt, sets one only when the player asks
+  if(announceReady) { announceReady = false; toast('Tilt controller ready. The plane follows the sensor: hold it level to fly straight.'); }
 });
 
 const flightKeys = new Set(['w','a','s','d','ArrowUp','ArrowDown','ArrowLeft','ArrowRight']);
@@ -250,7 +252,8 @@ function animate(now) {
   // Check stream health before moving the aircraft, not after a stale-input step.
   if(wasLive && !serial.live) updateTelemetry(smoothInput);
   const input = getInput(dt);
-  for(const event of game.update(dt,input)) {
+  const attitude = serial.live ? sensorAttitude(serial.sample, zero, settings) : null;
+  for(const event of game.update(dt,input,attitude)) {
     if(event.type === 'hit') {
       if(event.perfect) runStats.perfect++;
       runStats.bestStreak = Math.max(runStats.bestStreak, game.combo);
