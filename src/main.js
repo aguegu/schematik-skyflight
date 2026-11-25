@@ -3,6 +3,7 @@ import { FlightGame, sensorInput, sensorAttitude, damp, SPEED, RUN_SECONDS } fro
 import { SensorSerial } from './serial.js';
 import { SensorDart } from './dart.js';
 import { FlightScene } from './scene.js';
+import { FlightAudio } from './audio.js';
 
 const $ = id => document.getElementById(id);
 const game = new FlightGame();
@@ -10,6 +11,7 @@ const game = new FlightGame();
 // with ?serial the original firmware over Web Serial
 const serial = new URLSearchParams(location.search).has('serial') ? new SensorSerial() : new SensorDart();
 const keys = new Set();
+const audio = new FlightAudio();
 const settings = { sensitivity:1, invertRoll:false, invertPitch:false, swapAxes:false };
 let zero = { roll:0, pitch:0 }, selectedMode = 'rings';
 let toastTimeout, feedbackTimeout, scene, lastTime = performance.now(), wasLive = false;
@@ -61,13 +63,14 @@ function syncUI() {
   $('touch-controls').hidden = game.status !== 'running' || !matchMedia('(pointer:coarse)').matches;
   $('timer-label').textContent = game.mode === 'rings' ? 'TIME REMAINING' : 'FLIGHT TIME';
   $('course-text').textContent = game.mode === 'rings' ? 'FLY THROUGH THE GLOWING RINGS' : 'NO CLOCK. NO COURSE. JUST YOU AND THE COAST.';
-  $('bottom-hint').textContent = menu ? 'A LITTLE TILT. A WHOLE NEW PERSPECTIVE.' : 'TILT TO STEER  /  C TO ZERO  /  P TO PAUSE';
+  $('bottom-hint').textContent = menu ? 'A LITTLE TILT. A WHOLE NEW PERSPECTIVE.' : 'TILT TO STEER  /  C TO ZERO  /  P TO PAUSE  /  M FOR SOUND';
   updateChart();
 }
 function start() {
   keys.clear(); smoothInput = { roll:0, pitch:0 }; clearFeedback();
   runStats = { perfect:0, bestStreak:0 };
   game.start(selectedMode); syncUI();
+  audio.start();
   // Move focus off the launch button so Space cannot accidentally restart a run.
   document.activeElement?.blur();
   toast(serial.live ? 'Tilt to steer. Your coast is calling.' : matchMedia('(pointer:coarse)').matches ? 'Hold the arrow buttons to steer. The sky is yours.' : 'WASD or arrow keys to steer. P to pause.');
@@ -80,7 +83,7 @@ function pause(reason = 'Your flight is paused. The sky can wait.') {
   $('pause-distance').textContent = `${(game.distance / 1000).toFixed(2)} KM FLOWN`;
   syncUI(); $('resume-button').focus({ preventScroll:true });
 }
-function resume() { game.resume(); keys.clear(); lastTime = performance.now(); syncUI(); }
+function resume() { game.resume(); audio.start(); keys.clear(); lastTime = performance.now(); syncUI(); }
 function finish() {
   const previousBest = best; best = Math.max(best, game.score);
   try { localStorage.setItem('skyflight-best', String(best)); } catch { /* No storage needed. */ }
@@ -173,6 +176,7 @@ window.addEventListener('keydown', e => {
   if(e.repeat) return;
   if(key === 'p' || key === 'Escape') { if(game.status === 'running') pause(); else if(game.status === 'paused') resume(); }
   if(key === 'c') calibrate();
+  if(key === 'm') toast(audio.toggleMute() ? 'Sound off. M to turn it back on.' : 'Sound on.');
 });
 window.addEventListener('keyup', e => keys.delete(e.key.length === 1 ? e.key.toLowerCase() : e.key));
 window.addEventListener('blur', () => { keys.clear(); pause('Window out of focus. Your flight is safely paused.'); });
@@ -258,13 +262,15 @@ function animate(now) {
       if(event.perfect) runStats.perfect++;
       runStats.bestStreak = Math.max(runStats.bestStreak, game.combo);
       scene?.burst(event.x,event.y,event.perfect);
+      audio.ring(game.combo, event.perfect);
       feedback(`${event.perfect ? 'Perfect line' : 'Ring cleared'} +${event.points}`, `${event.multiplier}× MULTIPLIER · ${game.combo} IN A ROW`, event.perfect ? 'perfect' : 'hit');
     }
     if(event.type === 'miss') feedback('Next one is yours.', 'A FRESH LINE. A NEW CHANCE.', 'miss');
-    if(event.type === 'finish') finish();
+    if(event.type === 'finish') { audio.finish(); finish(); }
   }
   // Full-rate flight/live tilt; quieter idle rendering and no GPU work in hidden tabs.
   sceneTime += dt;
+  audio.update(game);
   const renderInterval = game.status === 'running' || serial.live ? 0 : game.status === 'menu' ? 1 / 30 : 1 / 15;
   if(!document.hidden && sceneTime + .001 >= renderInterval) {
     scene?.update(Math.min(sceneTime, .1),game,serial.live?input:null);
