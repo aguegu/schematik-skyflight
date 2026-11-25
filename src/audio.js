@@ -6,7 +6,10 @@
 // pitched up as the combo grows, and a falling sound for a ring missed (and,
 // slower, the end of a run). The audio starts on
 // the first flight (browsers allow sound only after a click or a key);
-// M mutes it, remembered in the browser.
+// M mutes it, remembered in the browser. Music: Purrple Cat's "Taking a Bath
+// And Jumping Into Bed" (CC BY 4.0, credited in the help panel and
+// public/sounds/CREDITS.md), looped, softer when not flying, dipped under a
+// ring's chime.
 
 const ENGINE_HZ = 72; // its note in level flight
 const CLIMB_HZ = 26; // more at full climb, less at full dive
@@ -23,6 +26,10 @@ const FADE_S = 0.25; // in and out at start, pause and finish
 const COMBO_STEP = 0.06; // each ring in a row pitches the chime up
 const COMBO_TOP = 1.45;
 const STORE = 'skyflight-sound';
+const MUSIC_FLYING = 0.22;
+const MUSIC_IDLE = 0.1; // the menu, a pause, the results
+const MUSIC_DUCK = 0.6; // its share under a ring's chime
+const DUCK_S = 0.35;
 
 export class FlightAudio {
   constructor() {
@@ -64,12 +71,19 @@ export class FlightAudio {
     this.windSource.connect(this.windBand).connect(this.wind).connect(this.master);
 
     for (const node of [this.saw, this.tri, lfo, this.windSource]) node.start();
-    await Promise.all(['coin', 'fall'].map(async (name) => {
+    this.music = ctx.createGain(); this.music.gain.value = 0;
+    this.music.connect(this.master);
+    this.flyingMusic = false;
+    await Promise.all(['coin', 'fall', 'music'].map(async (name) => {
       try {
         const response = await fetch(`${import.meta.env.BASE_URL}sounds/${name}.ogg`);
         this.buffers[name] = await ctx.decodeAudioData(await response.arrayBuffer());
       } catch { /* the flight goes on without it */ }
     }));
+    if (this.buffers.music) {
+      const source = ctx.createBufferSource(); source.buffer = this.buffers.music; source.loop = true;
+      source.connect(this.music); source.start();
+    }
   }
 
   // each frame: the engine and the wind from the plane; silent unless flying
@@ -85,6 +99,18 @@ export class FlightAudio {
     this.engine.gain.setTargetAtTime(flying ? ENGINE_GAIN : 0, t, flying ? RAMP_S : FADE_S);
     this.windBand.frequency.setTargetAtTime(WIND_HZ + bank * WIND_BANK_HZ + Math.abs(game.vx) * 20, t, RAMP_S);
     this.wind.gain.setTargetAtTime(flying ? WIND_GAIN + bank * WIND_BANK_GAIN : 0, t, flying ? RAMP_S : FADE_S);
+    if (flying !== this.flyingMusic || !this.musicSet) {
+      this.music.gain.setTargetAtTime(flying ? MUSIC_FLYING : MUSIC_IDLE, t, FADE_S * 2);
+      this.flyingMusic = flying; this.musicSet = true;
+    }
+  }
+
+  // the music dips under a chime, then comes back
+  duck() {
+    const t = this.ctx.currentTime;
+    this.music.gain.cancelScheduledValues(t);
+    this.music.gain.setTargetAtTime(MUSIC_FLYING * MUSIC_DUCK, t, 0.03);
+    this.music.gain.setTargetAtTime(MUSIC_FLYING, t + DUCK_S, 0.15);
   }
 
   play(name, rate = 1, gain = 0.6) {
@@ -100,6 +126,7 @@ export class FlightAudio {
   ring(combo, perfect) {
     const rate = Math.min(COMBO_TOP, 1 + COMBO_STEP * Math.max(0, combo - 1)) + (perfect ? 0.08 : 0);
     this.play('coin', rate, perfect ? 0.7 : 0.5);
+    if (this.ctx) this.duck();
   }
 
   // a ring missed: the falling sound; the run's end: the same, slower and lower
