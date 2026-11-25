@@ -29,3 +29,17 @@ header{position:fixed;z-index:3;top:0;left:0;right:0;margin:0 42px;height:100px;
 @media(max-width:800px) and (orientation:portrait){#result-panel{top:calc(50% + 38px);max-height:calc(100dvh - 116px)}}
 @media(pointer:coarse) and (orientation:portrait){#toast{bottom:250px;width:max-content;max-width:calc(100vw - 40px);font-size:11px}.telemetry-heading{font-size:8px}.telemetry-heading>span:last-child{font-size:8px}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important}.primary-button:after{display:none}}
+/* night flight: the page's panels and text for a dark sky */
+.night-toggle{display:grid!important}
+body.night{--ink:#ece6d4;--muted:#a7b4bf;--paper:#16223a;--line:rgba(236,230,212,.2);color:var(--ink);background:#0b1424}
+body.night .vignette{background:linear-gradient(90deg,rgba(11,20,36,.92),rgba(11,20,36,.55) 27%,transparent 63%),linear-gradient(0deg,rgba(11,20,36,.9),transparent 24%,transparent 82%,rgba(11,20,36,.6))}
+body.night.flying .vignette{background:linear-gradient(0deg,rgba(11,20,36,.9),transparent 25%,transparent 82%,rgba(11,20,36,.7))}
+body.night .brand img{filter:invert(1) hue-rotate(180deg) brightness(1.2)}
+body.night .icon-button,body.night .connect-button,body.night kbd{background:#16223acc;border-color:rgba(236,230,212,.3)}
+body.night .game-hud,body.night .center-panel,body.night .feedback,body.night #touch-controls button{background:#16223aeb;border-color:#ffffff22;color:var(--ink)}
+body.night .center-panel:before{background:repeating-linear-gradient(120deg,var(--orange) 0 20px,#16223a 20px 32px,#5d7a9e 32px 52px,#16223a 52px 64px)}
+body.night dialog{background:var(--paper);color:var(--ink)}
+body.night .sensor-card{background:#1d2b46}
+body.night .coast-chart{color:#b9c6cf}
+body.night .coast-chart text{fill:#b9c6cf}
+body.night .feedback[data-kind=miss]{background:#16223ad4}

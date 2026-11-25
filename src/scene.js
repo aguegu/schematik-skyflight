@@ -352,6 +352,34 @@ function makeWater() {
   return { geometry: new THREE.PlaneGeometry(6000, 6000, 56, 56), material: waterMaterial, uniforms };
 }
 
+// a night sky's stars: points on the upper sky, fixed in size, no fog
+function makeStars() {
+  const count = 1400, radius = 2200, positions = new Float32Array(count * 3);
+  for (let i = 0; i < count; i++) {
+    const azimuth = Math.random() * Math.PI * 2, elevation = Math.asin(0.03 + Math.random() * 0.97);
+    positions.set([Math.cos(elevation) * Math.cos(azimuth) * radius, Math.sin(elevation) * radius, Math.cos(elevation) * Math.sin(azimuth) * radius], i * 3);
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  return new THREE.Points(geometry, new THREE.PointsMaterial({ color: 0xf4f0ff, size: 1.8, sizeAttenuation: false, fog: false, transparent: true, opacity: .85, depthWrite: false }));
+}
+
+// day and night: every colour the scene changes between them
+const DAY = {
+  background: 0xe9e7d9, fog: 0xc8dcce, fogNear: 195, fogFar: 1120, exposure: 1.05,
+  hemiSky: 0xfff2d7, hemiGround: 0x4d837d, hemi: 1.9, sun: 0xffdb9d, sunIntensity: 2.65,
+  skyTop: 0x79b4c8, skyBottom: 0xf1e4c9, disc: 0xffe5aa, discScale: 1,
+  deep: SEA, light: 0x75b8b4, glint: 0xffe9bd, cloud: 0xfff4df, beam: .05, ripple: .13,
+  planeLight: 0, glow: 1, stars: false,
+};
+const NIGHT = {
+  background: 0x0b1424, fog: 0x14213a, fogNear: 140, fogFar: 950, exposure: .95,
+  hemiSky: 0x5d6f9e, hemiGround: 0x0d1a22, hemi: .6, sun: 0xb9c8ff, sunIntensity: .55,
+  skyTop: 0x060c1a, skyBottom: 0x1c2a4a, disc: 0xeef1ff, discScale: .55,
+  deep: 0x0c2433, light: 0x1b4556, glint: 0xc9d6ff, cloud: 0x46536f, beam: .22, ripple: .05,
+  planeLight: 45, glow: 3, stars: true,
+};
+
 function makeCloudField() {
   const clusterCount = 20, puffsPerCluster = 4;
   const clouds = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 1), material(0xfff4df, { flatShading: true, roughness: 1 }), clusterCount * puffsPerCluster);
@@ -422,8 +450,9 @@ export class FlightScene {
     this.lookTarget = new THREE.Vector3();
     this.trailTip = new THREE.Vector3();
 
-    this.scene.add(new THREE.HemisphereLight(0xfff2d7, 0x4d837d, 1.9));
-    const sun = new THREE.DirectionalLight(0xffdb9d, 2.65);
+    this.hemi = new THREE.HemisphereLight(0xfff2d7, 0x4d837d, 1.9);
+    this.scene.add(this.hemi);
+    const sun = this.sun = new THREE.DirectionalLight(0xffdb9d, 2.65);
     sun.position.set(-100, 160, 100);
     sun.castShadow = true;
     const shadowSize = this.mobileQuality ? 512 : 1024;
@@ -440,8 +469,9 @@ export class FlightScene {
       vertexShader: 'varying vec3 vPosition; void main(){vPosition=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}',
       fragmentShader: 'uniform vec3 top; uniform vec3 bottom; varying vec3 vPosition; void main(){float h=normalize(vPosition).y; gl_FragColor=vec4(mix(bottom,top,smoothstep(-0.05,0.62,h)),1.0);\n#include <tonemapping_fragment>\n#include <colorspace_fragment>\n}',
     });
+    this.skyUniforms = skyMaterial.uniforms;
     mesh(skyGeometry, skyMaterial, this.scene);
-    mesh(new THREE.SphereGeometry(50, 32, 16), new THREE.MeshBasicMaterial({ color: 0xffe5aa, fog: false }), this.scene, [-520, 460, -1700]);
+    this.sunDisc = mesh(new THREE.SphereGeometry(50, 32, 16), new THREE.MeshBasicMaterial({ color: 0xffe5aa, fog: false }), this.scene, [-520, 460, -1700]);
 
     const water = makeWater();
     this.waterUniforms = water.uniforms;
@@ -486,6 +516,14 @@ export class FlightScene {
 
     const { plane, propeller } = makePlane();
     this.plane = plane;
+    // night: a warm light carried by the plane, so it shows against the dark
+    this.planeLight = new THREE.PointLight(0xffd9a8, 0, 45, 2);
+    this.planeLight.position.set(0, 4, 2);
+    plane.add(this.planeLight);
+    this.stars = makeStars();
+    this.stars.visible = false;
+    this.scene.add(this.stars);
+    this.glow = 1;
     this.propeller = propeller;
     this.plane.position.set(0, 24, 0);
     this.scene.add(plane);
@@ -574,6 +612,35 @@ export class FlightScene {
     this.fleet.sails.instanceMatrix.needsUpdate = true;
   }
 
+  // night flying: a moonlit sky with stars, dark water with the moon's glint,
+  // the lighthouse's beam, the navigation lights and the rings glowing
+  // brighter, and a warm light carried by the plane; or the day again
+  setNight(on) {
+    const v = on ? NIGHT : DAY;
+    this.night = on;
+    this.scene.background.set(v.background);
+    this.scene.fog.color.set(v.fog); this.scene.fog.near = v.fogNear; this.scene.fog.far = v.fogFar;
+    this.renderer.toneMappingExposure = v.exposure;
+    this.hemi.color.set(v.hemiSky); this.hemi.groundColor.set(v.hemiGround); this.hemi.intensity = v.hemi;
+    this.sun.color.set(v.sun); this.sun.intensity = v.sunIntensity;
+    this.skyUniforms.top.value.set(v.skyTop); this.skyUniforms.bottom.value.set(v.skyBottom);
+    this.sunDisc.material.color.set(v.disc); this.sunDisc.scale.setScalar(v.discScale);
+    this.waterUniforms.uDeep.value.set(v.deep); this.waterUniforms.uLight.value.set(v.light); this.waterUniforms.uGlint.value.set(v.glint);
+    this.ripples.material.opacity = v.ripple;
+    this.planeLight.intensity = v.planeLight;
+    this.stars.visible = v.stars;
+    this.glow = v.glow;
+    this.cloudField.mesh.material.color.set(v.cloud);
+    this.lighthouseBeacon.traverse(o => { if (o.isMesh && o.material.blending === THREE.AdditiveBlending) o.material.opacity = v.beam; });
+    // every glowing material's own glow (lamps, windows, navigation lights), from its day value
+    this.scene.traverse(o => {
+      if (!o.isMesh || !o.material.emissive || o.material.emissive.getHex() === 0) return;
+      const m = o.material;
+      m.userData.dayEmissive ??= m.emissiveIntensity;
+      m.emissiveIntensity = m.userData.dayEmissive * v.glow;
+    });
+  }
+
   update(dt, game, sensorPose = null) {
     this.elapsed += dt;
     const menu = game.status === 'menu';
@@ -629,7 +696,7 @@ export class FlightScene {
       // Passed gates vanish at the crossing plane, preventing camera-sized rings behind the craft.
       gate.visible = !menu && game.mode === 'rings' && data.z < 0 && data.z > -1020;
       gate.position.set(data.x, data.y, data.z);
-      gate.userData.outer.material.emissiveIntensity = isNext ? .95 : .28;
+      gate.userData.outer.material.emissiveIntensity = (isNext ? .95 : .28) * this.glow;
       gate.userData.inner.rotation.z = animateScenery ? this.motionTime * .12 : 0;
       gate.userData.center.visible = isNext;
       gate.userData.guide.visible = isNext;

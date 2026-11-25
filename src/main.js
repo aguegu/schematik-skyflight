@@ -176,6 +176,7 @@ window.addEventListener('keydown', e => {
   if(e.repeat) return;
   if(key === 'p' || key === 'Escape') { if(game.status === 'running') pause(); else if(game.status === 'paused') resume(); }
   if(key === 'c') calibrate();
+  if(key === 'n') setNight(!night);
   if(key === 'm') toast(audio.toggleMute() ? 'Sound off. M to turn it back on.' : 'Sound on.');
 });
 window.addEventListener('keyup', e => keys.delete(e.key.length === 1 ? e.key.toLowerCase() : e.key));
@@ -249,6 +250,21 @@ catch(error) {
   panel.textContent = 'This sky needs WebGL. Enable hardware acceleration in Chrome or Edge and reload. Your hardware does not need to be connected to try the game.';
   document.body.append(panel); $('start-button').disabled = true;
 }
+// night flight: the scene's sky and lights, the page's panels darker; N or the
+// moon button, remembered in the browser
+let night = false;
+try { night = localStorage.getItem('skyflight-night') === 'on'; } catch { /* optional */ }
+function setNight(on) {
+  night = on;
+  scene?.setNight(on);
+  document.body.classList.toggle('night', on);
+  $('night-button').textContent = on ? '☀' : '☾';
+  $('night-button').setAttribute('aria-pressed', String(on));
+  $('night-button').setAttribute('aria-label', on ? 'Fly by day' : 'Fly at night');
+  try { localStorage.setItem('skyflight-night', on ? 'on' : 'off'); } catch { /* optional */ }
+}
+setNight(night);
+$('night-button').addEventListener('click', () => { setNight(!night); $('night-button').blur(); });
 $('world').addEventListener('renderlost', () => { pause('Graphics connection lost. Reload this page to restore the sky.'); toast('WebGL context lost. Please reload the page.'); });
 syncUI(); updateTelemetry(smoothInput);
 function animate(now) {
