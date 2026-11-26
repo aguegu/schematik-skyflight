@@ -140,16 +140,24 @@ $('sensitivity').addEventListener('input', () => {
   settings.sensitivity = Number($('sensitivity').value); $('sensitivity-value').textContent = `${settings.sensitivity.toFixed(1)}×`; saveSettings();
 });
 
-$('connect-button').addEventListener('click', async () => {
-  if(serial.connected) { openDialog('settings-dialog'); return; }
-  pause('USB connection setup. Resume once the controller is ready.');
+// the Dart by USB or Bluetooth (a choice first); the ESP32 firmware (?serial) as it was
+async function connectController(via) {
+  $('link-dialog').close();
+  pause('Controller setup. Resume once the controller is ready.');
   announceReady = true;
-  try { await serial.connect(); if(serial.connected) toast('Connected. Keep the sensor still for a second while the gyro settles.'); }
+  try { await serial.connect(via); if(serial.connected) toast('Connected. Keep the sensor still for a second while the gyro settles.'); }
   catch(error) {
     if(error.name === 'NotFoundError') toast('No device selected. Keyboard controls are still ready.');
     else toast(error.message || 'Could not open serial port. Close other serial monitors and try again.');
   }
+}
+$('connect-button').addEventListener('click', () => {
+  if(serial.connected) { openDialog('settings-dialog'); return; }
+  if(serial instanceof SensorDart) { openDialog('link-dialog'); return; }
+  connectController();
 });
+$('link-usb').addEventListener('click', () => connectController('usb'));
+$('link-ble').addEventListener('click', () => connectController('ble'));
 $('disconnect-button').addEventListener('click', async () => {
   pause('Controller disconnected. Resume with the keyboard, or reconnect.');
   await serial.disconnect(); toast('Controller disconnected. Keyboard controls are ready.');

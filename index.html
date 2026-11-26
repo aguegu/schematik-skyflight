@@ -104,6 +104,12 @@
   </div>
   <div id="toast" role="status"></div>
 
+  <dialog id="link-dialog" aria-labelledby="link-title">
+    <div class="dialog-header"><span class="eyebrow">YOUR CONTROLLER</span><button class="icon-button close-dialog" aria-label="Close">×</button></div>
+    <h2 id="link-title">How is your Dart linked?</h2><p>A Dart USB-to-I2C bridge with an MPU6050 or MPU6500 on it. Hold the sensor still for a second after connecting while the gyro settles.</p>
+    <button id="link-usb" class="primary-button">Dart over USB <span>⌁</span></button>
+    <button id="link-ble" class="primary-button" style="margin-top:12px">Dart over Bluetooth <span>ᛒ</span></button>
+  </dialog>
   <dialog id="settings-dialog" aria-labelledby="settings-title">
     <div class="dialog-header"><span class="eyebrow">THE HUMAN INTERFACE</span><button class="icon-button close-dialog" aria-label="Close controller settings">×</button></div>
     <h2 id="settings-title">Make it feel right.</h2><p>Connect your controller, hold it in a comfortable neutral position, then zero the tilt.</p>

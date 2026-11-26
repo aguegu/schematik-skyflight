@@ -1,4 +1,5 @@
-// The tilt controller over a Dart USB-to-I2C bridge (WebUSB) instead of a
+// The tilt controller over a Dart USB-to-I2C bridge, by USB (WebUSB, dart-usb)
+// or Bluetooth (Web Bluetooth, dart-ble), instead of a
 // microcontroller: atiic reads the MPU6050 (or MPU6500: GY-9250 boards) from
 // the browser, and roll and
 // pitch are worked out here, the same way the included firmware does
@@ -10,7 +11,7 @@
 // firmware's atan2(-ax, ...) is nose-down positive, so its pitch, filtered
 // the same way, is sent negated; roll as the firmware's (right wing down positive).
 import { Mpu6050, Mpu6500 } from 'atiic';
-import { Dart, FILTERS } from 'atiic/adapters/dart';
+import { Dart, FILTERS, BLE_REQUEST } from 'atiic/adapters/dart';
 
 const SCL_HZ = 400000;
 const PERIOD_MS = 20; // 50 Hz, as the firmware
@@ -50,17 +51,20 @@ export class SensorDart extends EventTarget {
     this.timestamps = [];
   }
 
-  get supported() { return 'usb' in navigator; }
+  get supported() { return 'usb' in navigator || 'bluetooth' in navigator; }
+  static can(via) { return via === 'ble' ? 'bluetooth' in navigator : 'usb' in navigator; }
   get live() { return this.connected && this.sample !== null && performance.now() - this.lastSampleAt < STALE_MS; }
   notify(type, detail) { this.dispatchEvent(new CustomEvent(type, { detail })); }
 
-  async connect() {
+  // via: 'usb' (a dart-usb) or 'ble' (a dart-ble)
+  async connect(via = 'usb') {
     if (this.connected || this.connecting) return;
-    if (!this.supported) throw new Error('The Dart needs WebUSB: desktop Chrome or Edge on localhost. Keyboard controls work here.');
+    if (!SensorDart.can(via)) throw new Error(via === 'ble' ? 'This browser has no Web Bluetooth: Chrome or Edge on localhost or HTTPS. Keyboard controls work here.' : 'This browser has no WebUSB: desktop Chrome or Edge on localhost. Keyboard controls work here.');
     this.connecting = true;
     this.notify('status');
     try {
-      const device = await navigator.usb.requestDevice({ filters: FILTERS });
+      const device = via === 'ble' ? await navigator.bluetooth.requestDevice(BLE_REQUEST) : await navigator.usb.requestDevice({ filters: FILTERS });
+      this.via = via;
       const bus = await new Dart(device).open(SCL_HZ);
       let imu;
       try {
