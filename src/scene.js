@@ -33,7 +33,9 @@ function wingGeometry(points, depth = 0.13) {
   return geometry;
 }
 
-function makePlane() {
+// loadTexture(name, done): the page's image loader, or in a worker (no images
+// there) the bitmaps the page made of the same files
+function makePlane(loadTexture) {
   const plane = new THREE.Group();
   const orange = material(ORANGE, { roughness: 0.34, metalness: 0.17 });
   const lightOrange = material(0xff8b3d, { roughness: 0.4 });
@@ -128,8 +130,7 @@ function makePlane() {
   pitot.rotation.x = Math.PI / 2;
 
   // Supplied official Schematik artwork remains the hero livery.
-  const loader = new THREE.TextureLoader();
-  loader.load('/schematik-wordmark.svg', texture => {
+  loadTexture('schematik-wordmark', texture => {
     texture.colorSpace = THREE.SRGBColorSpace;
     const decalMaterial = new THREE.MeshBasicMaterial({ map: texture, transparent: true, side: THREE.DoubleSide, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 });
     for (const side of [-1, 1]) {
@@ -137,7 +138,7 @@ function makePlane() {
       decal.rotation.x = -Math.PI / 2;
     }
   });
-  loader.load('/schematik-mark.svg', texture => {
+  loadTexture('schematik-mark', texture => {
     texture.colorSpace = THREE.SRGBColorSpace;
     const markMaterial = new THREE.MeshBasicMaterial({ map: texture, transparent: true, side: THREE.DoubleSide, depthWrite: false });
     for (const side of [-1, 1]) {
@@ -521,7 +522,10 @@ export class FlightScene {
     this.birds = makeBirdFlock();
     this.scene.add(this.birds);
 
-    const { plane, propeller } = makePlane();
+    const loadTexture = opts.images
+      ? (name, done) => { const bitmap = opts.images[name]; if (bitmap) { const t = new THREE.Texture(bitmap); t.needsUpdate = true; done(t); } }
+      : (name, done) => new THREE.TextureLoader().load(`./${name}.svg`, done);
+    const { plane, propeller } = makePlane(loadTexture);
     this.plane = plane;
     // night: a warm light carried by the plane, so it shows against the dark
     this.planeLight = new THREE.PointLight(0xffd9a8, 0, 45, 2);
