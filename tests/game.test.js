@@ -94,7 +94,7 @@ test('course generation is deterministic and fits the playable envelope',()=>{
   for(let i=0;i<200;i++) { const gate=makeGate(i,-200); assert.ok(Math.abs(gate.x)<=27);assert.ok(gate.y>=12&&gate.y<=36);assert.deepEqual(gate,makeGate(i,-200)); }
 });
 
-test('a live sensor sets the plane\'s attitude itself, from true level, eased'), () => {
+test('a live sensor sets the plane\'s attitude itself, from true level, eased', () => {
   const settings = { sensitivity: 1, invertRoll: false, invertPitch: false, swapAxes: false };
   const att = sensorAttitude({ roll: 20, pitch: -10 }, { roll: 0, pitch: 0 }, settings);
   assert.deepEqual(att, { roll: 20, pitch: -10 });
