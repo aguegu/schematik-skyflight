@@ -1,5 +1,6 @@
 // The tilt controller over a Dart USB-to-I2C bridge (WebUSB) instead of a
-// microcontroller: atiic reads the MPU6050 from the browser, and roll and
+// microcontroller: atiic reads the MPU6050 (or MPU6500: GY-9250 boards) from
+// the browser, and roll and
 // pitch are worked out here, the same way the included firmware does
 // (accelerometer angles, gyro rates, a complementary filter with a 0.45 s
 // time constant, the gyro's bias averaged at connect). Same interface as
@@ -8,7 +9,7 @@
 // Pitch is given nose-up positive (the board's x axis as the nose): the
 // firmware's atan2(-ax, ...) is nose-down positive, so its pitch, filtered
 // the same way, is sent negated; roll as the firmware's (right wing down positive).
-import { Mpu6050 } from 'atiic';
+import { Mpu6050, Mpu6500 } from 'atiic';
 import { Dart, FILTERS } from 'atiic/adapters/dart';
 
 const SCL_HZ = 400000;
@@ -17,6 +18,27 @@ const TAU_S = 0.45; // the complementary filter's time constant, as the firmware
 const BIAS_SAMPLES = 50; // about a second, held still
 const DEG_PER_RAD = 180 / Math.PI;
 const STALE_MS = 1200;
+// the IMUs it reads, by WHO_AM_I (0x75), at 0x68 (AD0 low) or 0x69: the same
+// registers for what's used here; atiic's drivers know each one's scales
+const REG_WHO_AM_I = 0x75;
+const IMUS = { 0x68: Mpu6050, 0x70: Mpu6500 };
+const ADDRESSES = [0x68, 0x69];
+const hex = (n) => `0x${n.toString(16).padStart(2, '0')}`;
+
+// the first MPU-6050 or MPU-6500 on the bus, initialised
+async function findImu(bus) {
+  const seen = [];
+  for (const address of ADDRESSES) {
+    if (!(await bus.acks(address))) continue;
+    const [who] = await bus.writeRead(address, [REG_WHO_AM_I], 1);
+    const Driver = IMUS[who];
+    if (!Driver) { seen.push(`WHO_AM_I ${hex(who)} at ${hex(address)}`); continue; }
+    const imu = new Driver(bus, address);
+    await imu.init('500', '4');
+    return imu;
+  }
+  throw new Error(`No MPU6050 or MPU6500 on the Dart (0x68, 0x69)${seen.length ? `: ${seen.join(', ')}` : ''}`);
+}
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export class SensorDart extends EventTarget {
@@ -40,13 +62,14 @@ export class SensorDart extends EventTarget {
     try {
       const device = await navigator.usb.requestDevice({ filters: FILTERS });
       const bus = await new Dart(device).open(SCL_HZ);
-      const imu = new Mpu6050(bus);
+      let imu;
       try {
-        await imu.init('500', '4');
+        imu = await findImu(bus);
       } catch (error) {
         await bus.close().catch(() => {});
-        throw new Error(`No MPU6050 on the Dart (0x68): ${error.message}`);
+        throw error;
       }
+      this.chip = imu.constructor.chip.name;
       this.bus = bus;
       this.connected = true;
       this.sample = null; this.rate = 0; this.timestamps = [];

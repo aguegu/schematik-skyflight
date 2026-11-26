@@ -155,7 +155,7 @@ $('disconnect-button').addEventListener('click', async () => {
   await serial.disconnect(); toast('Controller disconnected. Keyboard controls are ready.');
 });
 serial.addEventListener('status', () => {
-  $('connect-label').textContent = serial.connecting ? 'Connecting…' : serial.connected ? 'MPU6050 connected' : 'Connect MPU6050';
+  $('connect-label').textContent = serial.connecting ? 'Connecting…' : serial.connected ? `${serial.chip ?? 'MPU6050'} connected` : 'Connect MPU6050';
   $('connect-button').disabled = serial.connecting;
   $('connect-button').querySelector('.status-dot').classList.toggle('connected', serial.connected);
   $('disconnect-button').disabled = !serial.connected;
