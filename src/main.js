@@ -285,7 +285,7 @@ const STRIP_BARS = 120, STRIP_TOP_MS = 60;
 // every two seconds while the panel is open: each reading's [asked at ms, round trip ms]
 // since the last post, the frame times, the link
 const POST_EVERY_MS = 2000;
-let postedAt = 0, slow = [];
+let postedAt = 0, slow = [], sceneMs = []; // [scene.update ms, of it renderer.render ms] each drawn frame
 // the slow frames' anatomy (Long Animation Frames, Chromium 123+): each over
 // 50 ms, its script, style and layout, and render time, and its longest script
 if (PerformanceObserver.supportedEntryTypes?.includes('long-animation-frame')) {
@@ -306,6 +306,10 @@ function postStats(now, s) {
   const readings = s?.log.splice(0) ?? [];
   const frameMs = frameTimes.slice(-Math.min(frameTimes.length, Math.round(frames.length * POST_EVERY_MS / 1000)));
   const body = { via: s?.via ?? null, chip: s?.chip ?? null, rate: serial.rate, status: game.status, fps: frames.length, readings,
+    scene: (() => { const all = sceneMs.splice(0), r1 = v => Math.round(v * 10) / 10;
+      const sum = v => { const x = v.sort((p, q) => p - q); return x.length ? { p50: r1(x[x.length >> 1]), p95: r1(x[Math.floor(x.length * .95)]), max: r1(x.at(-1)) } : null; };
+      return all.length ? { n: all.length, update: sum(all.map(([u]) => u)), render: sum(all.map(([, r]) => r)) } : null; })(),
+    renderMsLast: scene?.renderMs, gl: scene ? { calls: scene.renderer.info.render.calls, triangles: scene.renderer.info.render.triangles, dpr: scene.renderer.getPixelRatio(), w: innerWidth, h: innerHeight } : null,
     slow: slow.splice(0), hidden: document.hidden, focus: document.hasFocus(), frames: { n: frameMs.length, max: Math.round(Math.max(0, ...frameMs) * 10) / 10, over33: frameMs.filter(ms => ms > 33.4).length } };
   fetch('./__stats', { method: 'POST', body: JSON.stringify(body), keepalive: true }).catch(() => {});
 }
@@ -387,7 +391,9 @@ function animate(now) {
   audio.update(game);
   const renderInterval = game.status === 'running' || serial.live ? 0 : game.status === 'menu' ? 1 / 30 : 1 / 15;
   if(!document.hidden && sceneTime + .001 >= renderInterval) {
+    const updateAt = performance.now();
     scene?.update(Math.min(sceneTime, .1),game,serial.live?input:null);
+    sceneMs.push([performance.now() - updateAt, scene?.renderMs ?? 0]);
     sceneTime = 0;
   } else if(document.hidden) sceneTime = 0;
   uiTime += dt;

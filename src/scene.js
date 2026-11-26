@@ -756,6 +756,8 @@ export class FlightScene {
         this.particles.splice(index, 1);
       }
     }
+    const renderAt = performance.now();
     this.renderer.render(this.scene, this.camera);
+    this.renderMs = performance.now() - renderAt; // stats for nerds: the draw call's own time
   }
 }
