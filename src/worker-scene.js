@@ -9,13 +9,13 @@ const LIVERY = [['schematik-wordmark', 1088, 160], ['schematik-mark', 288, 384]]
 export const canDrawInWorker = () => typeof OffscreenCanvas !== 'undefined' && 'transferControlToOffscreen' in HTMLCanvasElement.prototype;
 
 export class WorkerScene {
-  constructor(container, { night = false } = {}) {
+  constructor(container, { night = false, quality = 'high' } = {}) {
     const canvas = document.createElement('canvas');
     canvas.style.cssText = 'display:block;width:100%;height:100%';
     container.append(canvas);
     const offscreen = canvas.transferControlToOffscreen();
     this.worker = new Worker(new URL('./render-worker.js', import.meta.url), { type: 'module' });
-    this.renderMs = 0; this.updateMs = 0; this.gl = null; this.night = night;
+    this.renderMs = 0; this.updateMs = 0; this.gl = null; this.night = night; this.quality = quality;
     this.worker.onmessage = ({ data: m }) => {
       if (m.type === 'drawn') { this.renderMs = m.renderMs; this.updateMs = m.updateMs; this.gl = m.gl; }
       else if (m.type === 'lost') container.dispatchEvent(new CustomEvent('renderlost'));
@@ -34,7 +34,7 @@ export class WorkerScene {
     }));
     ready.then(() => this.worker.postMessage({ type: 'init', canvas: offscreen, night: this.night, opts: {
       width: innerWidth, height: innerHeight, dpr: devicePixelRatio,
-      mobile: matchMedia('(pointer:coarse)').matches, reducedMotion: reduced.matches, images,
+      mobile: matchMedia('(pointer:coarse)').matches, reducedMotion: reduced.matches, images, quality: this.quality,
     } }, [offscreen, ...Object.values(images)]));
     reduced.addEventListener?.('change', (e) => this.worker.postMessage({ type: 'reducedMotion', on: e.matches }));
     addEventListener('resize', () => this.worker.postMessage({ type: 'resize', width: innerWidth, height: innerHeight }));
@@ -49,6 +49,7 @@ export class WorkerScene {
   }
 
   setNight(on) { this.night = on; this.worker.postMessage({ type: 'night', on }); } // before the worker starts: taken at its start
+  setQuality(quality) { this.quality = quality; this.worker.postMessage({ type: 'quality', quality }); }
   burst(x, y, perfect) { this.worker.postMessage({ type: 'burst', x, y, perfect }); }
   glStats() { return this.gl; }
 }

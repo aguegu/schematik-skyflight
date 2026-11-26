@@ -126,6 +126,8 @@
     <label class="check-label"><input id="invert-pitch" type="checkbox" /> Invert pitch (up / down)</label>
     <label class="check-label"><input id="swap-axes" type="checkbox" /> Swap axes (sensor mounted sideways)</label>
     <label class="check-label"><input id="nerd-stats-check" type="checkbox" /> Stats for nerds (<kbd>I</kbd>)</label>
+    <label class="range-label" for="quality">Graphics <output id="quality-note"></output></label>
+    <select id="quality" class="quality-select"><option value="high">High: shadows, smooth edges, sharp</option><option value="light">Light: for ordinary PCs, steadier</option></select>
     <p class="controller-note"><span aria-hidden="true">⊕</span> Real roll & pitch. Simulated altitude. Your hands do the rest.</p>
     <div class="dialog-footer"><span>115200 BAUD · USB SERIAL</span><button id="disconnect-button" class="text-button" disabled>Disconnect</button></div>
   </dialog>

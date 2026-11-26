@@ -436,15 +436,19 @@ export class FlightScene {
   constructor(container, opts = {}) {
     this.offscreen = Boolean(opts.canvas);
     this.width = opts.width ?? innerWidth; this.height = opts.height ?? innerHeight;
-    this.renderer = new THREE.WebGLRenderer({ canvas: opts.canvas, antialias: true, alpha: false, powerPreference: 'high-performance' });
+    // quality: 'high', or 'light' for ordinary PCs (no shadows, no edge
+    // smoothing, one pixel a CSS pixel). Edge smoothing is the WebGL
+    // context's, fixed when it's made: a change of it takes the next load
+    this.quality = opts.quality === 'light' ? 'light' : 'high';
+    this.renderer = new THREE.WebGLRenderer({ canvas: opts.canvas, antialias: this.quality === 'high', alpha: false, powerPreference: 'high-performance' });
     this.mobileQuality = opts.mobile ?? window.matchMedia('(pointer:coarse)').matches;
     this.maxPixelRatio = Math.min(opts.dpr ?? devicePixelRatio, this.mobileQuality ? 1.5 : 2);
-    this.renderer.setPixelRatio(this.maxPixelRatio);
+    this.renderer.setPixelRatio(this.quality === 'high' ? this.maxPixelRatio : 1);
     this.renderer.setSize(this.width, this.height, !this.offscreen);
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.05;
-    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.enabled = this.quality === 'high';
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     container?.append(this.renderer.domElement);
 
@@ -570,6 +574,18 @@ export class FlightScene {
       if (opts.onContextLost) opts.onContextLost(); else container.dispatchEvent(new CustomEvent('renderlost'));
     });
     this.resize(this.width, this.height);
+  }
+
+  // the player's graphics setting, live: shadows and the pixel ratio now (the
+  // materials rebuilt once for the shadows), edge smoothing at the next load
+  setQuality(quality) {
+    const high = quality === 'high';
+    if ((this.quality === 'high') === high) return;
+    this.quality = high ? 'high' : 'light';
+    this.renderer.shadowMap.enabled = high;
+    this.scene.traverse(o => { if (o.material) for (const m of [].concat(o.material)) m.needsUpdate = true; });
+    this.renderer.setPixelRatio(high ? this.maxPixelRatio : 1);
+    this.renderer.setSize(this.width, this.height, !this.offscreen);
   }
 
   resize(width, height) {

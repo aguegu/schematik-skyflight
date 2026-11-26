@@ -37,6 +37,7 @@ onmessage = ({ data: m }) => {
   }
   else if (m.type === 'resize') scene.resize(m.width, m.height);
   else if (m.type === 'night') scene.setNight(m.on);
+  else if (m.type === 'quality') scene.setQuality(m.quality);
   else if (m.type === 'burst') scene.burst(m.x, m.y, m.perfect);
   else if (m.type === 'reducedMotion') scene.reducedMotion = m.on;
 };

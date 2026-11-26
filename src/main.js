@@ -263,7 +263,14 @@ function renderError(error) {
   document.body.append(panel); $('start-button').disabled = true;
 }
 const inline = new URLSearchParams(location.search).has('inline') || !canDrawInWorker();
-try { scene = inline ? new FlightScene($('world')) : new WorkerScene($('world'), { night: (() => { try { return localStorage.getItem('skyflight-night') === 'on'; } catch { return false; } })() }); }
+// graphics: High or Light (Controller, or ?quality=light), remembered; edge
+// smoothing follows at the next load
+let quality = 'high';
+try { quality = localStorage.getItem('skyflight-quality') === 'light' ? 'light' : 'high'; } catch { /* optional */ }
+const qualityParam = new URLSearchParams(location.search).get('quality');
+if(qualityParam) quality = qualityParam === 'light' ? 'light' : 'high';
+const loadedQuality = quality;
+try { scene = inline ? new FlightScene($('world'), { quality }) : new WorkerScene($('world'), { quality, night: (() => { try { return localStorage.getItem('skyflight-night') === 'on'; } catch { return false; } })() }); }
 catch(error) { renderError(error); }
 $('world').addEventListener('rendererror', e => renderError(e.detail));
 // night flight: the scene's sky and lights, the page's panels darker; N or the
@@ -282,6 +289,13 @@ function setNight(on) {
   try { localStorage.setItem('skyflight-night', on ? 'on' : 'off'); } catch { /* optional */ }
 }
 setNight(night);
+$('quality').value = quality;
+$('quality').addEventListener('change', () => {
+  quality = $('quality').value;
+  scene?.setQuality(quality);
+  try { localStorage.setItem('skyflight-quality', quality); } catch { /* optional */ }
+  $('quality-note').textContent = quality !== loadedQuality ? 'edges change on reload' : '';
+});
 $('night-button').addEventListener('click', () => { setNight(!night); $('night-button').blur(); });
 // stats for nerds: the controller's link, its chip, each reading's round trip,
 // the raw sensor values and the filter's output; the game's frame rate and
@@ -366,6 +380,7 @@ function updateNerdStats(input) {
   lines.push(`input     roll ${f(input.roll, 2)}  pitch ${f(input.pitch, 2)}`);
   lines.push(`plane     x ${f(game.x)}  y ${f(game.y)}  vx ${f(game.vx)}  vy ${f(game.vy)}`);
   lines.push(`          bank ${f(-game.roll * rad)}°  pitch ${f(game.pitch * rad)}°  ${game.status}`);
+  lines.push(`graphics  ${quality}`);
   lines.push(`render    ${String(frames.length).padStart(3)} fps  draw ${f(scene?.renderMs, 1, 5)} ms  ${inline ? 'on the page' : 'in a worker'}  pixels ×${scene?.glStats()?.dpr?.toFixed(2) ?? '—'}`);
   $('nerd-text').textContent = lines.join('\n');
   postStats(now, s);
