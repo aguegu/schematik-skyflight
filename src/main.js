@@ -285,14 +285,28 @@ const STRIP_BARS = 120, STRIP_TOP_MS = 60;
 // every two seconds while the panel is open: each reading's [asked at ms, round trip ms]
 // since the last post, the frame times, the link
 const POST_EVERY_MS = 2000;
-let postedAt = 0;
+let postedAt = 0, slow = [];
+// the slow frames' anatomy (Long Animation Frames, Chromium 123+): each over
+// 50 ms, its script, style and layout, and render time, and its longest script
+if (PerformanceObserver.supportedEntryTypes?.includes('long-animation-frame')) {
+  new PerformanceObserver(list => {
+    if (!nerdStats) return;
+    for (const e of list.getEntries()) {
+      const top = [...e.scripts].sort((a, b) => b.duration - a.duration)[0];
+      slow.push({ ms: Math.round(e.duration), script: Math.round(e.scripts.reduce((n, x) => n + x.duration, 0)),
+        render: Math.round(e.renderStart ? e.startTime + e.duration - e.renderStart : 0),
+        block: Math.round(e.blockingDuration ?? 0),
+        top: top ? `${top.invoker || top.invokerType} ${top.sourceFunctionName || ''} ${(top.sourceURL || '').split('/').pop()}:${top.sourceCharPosition ?? ''}`.trim() : '' });
+    }
+  }).observe({ type: 'long-animation-frame', buffered: false });
+}
 function postStats(now, s) {
   if (now - postedAt < POST_EVERY_MS) return;
   postedAt = now;
   const readings = s?.log.splice(0) ?? [];
   const frameMs = frameTimes.slice(-Math.min(frameTimes.length, Math.round(frames.length * POST_EVERY_MS / 1000)));
   const body = { via: s?.via ?? null, chip: s?.chip ?? null, rate: serial.rate, status: game.status, fps: frames.length, readings,
-    frames: { n: frameMs.length, max: Math.round(Math.max(0, ...frameMs) * 10) / 10, over33: frameMs.filter(ms => ms > 33.4).length } };
+    slow: slow.splice(0), hidden: document.hidden, focus: document.hasFocus(), frames: { n: frameMs.length, max: Math.round(Math.max(0, ...frameMs) * 10) / 10, over33: frameMs.filter(ms => ms > 33.4).length } };
   fetch('./__stats', { method: 'POST', body: JSON.stringify(body), keepalive: true }).catch(() => {});
 }
 // a strip of bars, one a value (ms), lines at the given ms, coloured by colour(ms)

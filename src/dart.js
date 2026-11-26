@@ -136,7 +136,9 @@ export class SensorDart extends EventTarget {
         while (this.timestamps.length && this.timestamps[0] < now - 1000) this.timestamps.shift();
         this.rate = this.timestamps.length;
         this.notify('sample', this.sample);
-        const spent = performance.now() - now;
+        // 50 a second at most, counted from when this reading was asked (a
+        // slow link, Bluetooth's ~25 ms round trips, then reads back to back)
+        const spent = performance.now() - asked;
         if (spent < PERIOD_MS) await delay(PERIOD_MS - spent);
       }
     } catch (error) {

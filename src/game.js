@@ -51,8 +51,10 @@ export class FlightGame {
     this.x = clamp(this.x + this.vx * dt, -52, 52);
     this.y = clamp(this.y + this.vy * dt, 8, 67);
     if (attitude) {
-      this.roll = -attitude.roll * RAD_PER_DEG;
-      this.pitch = attitude.pitch * RAD_PER_DEG;
+      // eased over ~40 ms: the readings come 20 to 50 times a second, the
+      // frames 60, so the plane glides between readings instead of stepping
+      this.roll = damp(this.roll, -attitude.roll * RAD_PER_DEG, ATTITUDE_RATE, dt);
+      this.pitch = damp(this.pitch, attitude.pitch * RAD_PER_DEG, ATTITUDE_RATE, dt);
     } else {
       this.roll = damp(this.roll, -roll * 0.7, 6, dt);
       this.pitch = damp(this.pitch, pitch * 0.26, 5, dt);
@@ -97,6 +99,7 @@ export class FlightGame {
 }
 
 const RAD_PER_DEG = Math.PI / 180;
+const ATTITUDE_RATE = 25; // 1/s: the sensor's attitude eased with a 40 ms time constant
 
 // the sensor's attitude as the plane takes it, degrees: its roll and pitch
 // from the zero (none unless the player sets one), swapped and inverted as

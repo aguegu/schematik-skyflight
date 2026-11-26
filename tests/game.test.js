@@ -94,13 +94,14 @@ test('course generation is deterministic and fits the playable envelope',()=>{
   for(let i=0;i<200;i++) { const gate=makeGate(i,-200); assert.ok(Math.abs(gate.x)<=27);assert.ok(gate.y>=12&&gate.y<=36);assert.deepEqual(gate,makeGate(i,-200)); }
 });
 
-test('a live sensor sets the plane\'s attitude itself, from true level', () => {
+test('a live sensor sets the plane\'s attitude itself, from true level, eased'), () => {
   const settings = { sensitivity: 1, invertRoll: false, invertPitch: false, swapAxes: false };
   const att = sensorAttitude({ roll: 20, pitch: -10 }, { roll: 0, pitch: 0 }, settings);
   assert.deepEqual(att, { roll: 20, pitch: -10 });
   const game = new FlightGame(); game.start('free');
-  game.update(0.02, sensorInput({ roll: 20, pitch: -10 }, { roll: 0, pitch: 0 }, settings), att);
-  assert.ok(Math.abs(game.roll - (-20 * Math.PI / 180)) < 1e-9);
-  assert.ok(Math.abs(game.pitch - (-10 * Math.PI / 180)) < 1e-9);
+  // eased (40 ms): a third of a second later it's there
+  for (let i = 0; i < 20; i++) game.update(0.016, sensorInput({ roll: 20, pitch: -10 }, { roll: 0, pitch: 0 }, settings), att);
+  assert.ok(Math.abs(game.roll - (-20 * Math.PI / 180)) < 1e-3);
+  assert.ok(Math.abs(game.pitch - (-10 * Math.PI / 180)) < 1e-3);
   assert.deepEqual(sensorAttitude({ roll: 20, pitch: -10 }, { roll: 0, pitch: 0 }, { ...settings, swapAxes: true, invertRoll: true }), { roll: 10, pitch: 20 });
 });
