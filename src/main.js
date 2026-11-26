@@ -359,7 +359,7 @@ function updateNerdStats(input) {
   lines.push(`input     roll ${f(input.roll, 2)}  pitch ${f(input.pitch, 2)}`);
   lines.push(`plane     x ${f(game.x)}  y ${f(game.y)}  vx ${f(game.vx)}  vy ${f(game.vy)}`);
   lines.push(`          bank ${f(-game.roll * rad)}°  pitch ${f(game.pitch * rad)}°  ${game.status}`);
-  lines.push(`render    ${String(frames.length).padStart(3)} fps`);
+  lines.push(`render    ${String(frames.length).padStart(3)} fps  draw ${f(scene?.renderMs, 1, 5)} ms  pixels ×${scene ? scene.renderer.getPixelRatio().toFixed(2) : '—'}`);
   $('nerd-text').textContent = lines.join('\n');
   postStats(now, s);
   // the strips, as i2c.ninja's ?perf meter: one bar each, newest at the right
