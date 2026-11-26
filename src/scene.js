@@ -1,8 +1,6 @@
 import * as THREE from 'three';
 import { GATE_RADIUS } from './game.js';
 
-const RENDER_SLOW_MS = 10; // the draw call's smoothed time above which there are fewer pixels
-const RENDER_FAST_MS = 5; // below which more
 const ORANGE = 0xef6a28;
 const BURNT_ORANGE = 0xa94822;
 const CREAM = 0xfff0cf;
@@ -435,7 +433,6 @@ export class FlightScene {
     this.mobileQuality = window.matchMedia('(pointer:coarse)').matches;
     this.maxPixelRatio = Math.min(devicePixelRatio, this.mobileQuality ? 1.5 : 2);
     this.renderer.setPixelRatio(this.maxPixelRatio);
-    this.renderEma = 0; this.slowFor = 0; this.fastFor = 0;
     this.renderer.setSize(innerWidth, innerHeight);
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -558,25 +555,6 @@ export class FlightScene {
     this.renderer.domElement.addEventListener('webglcontextlost', event => { event.preventDefault(); container.dispatchEvent(new CustomEvent('renderlost')); });
     window.addEventListener('resize', () => this.resize());
     this.resize();
-  }
-
-  // resolution follows the GPU: the draw call waits on the GPU, and while it
-  // waits the page does nothing else (the Dart's replies wait too). Drawing
-  // slow for half a second: a quarter step fewer pixels a side, down to 1;
-  // fast again for three seconds: a quarter step back up, to the screen's own
-  adaptResolution(dt) {
-    this.renderEma += (this.renderMs - this.renderEma) * Math.min(1, dt * 8);
-    this.slowFor = this.renderEma > RENDER_SLOW_MS ? this.slowFor + dt : 0;
-    this.fastFor = this.renderEma < RENDER_FAST_MS ? this.fastFor + dt : 0;
-    const ratio = this.renderer.getPixelRatio();
-    let next = ratio;
-    if (this.slowFor > .5 && ratio > 1) next = Math.max(1, ratio - .25);
-    else if (this.fastFor > 3 && ratio < this.maxPixelRatio) next = Math.min(this.maxPixelRatio, ratio + .25);
-    if (next !== ratio) {
-      this.renderer.setPixelRatio(next);
-      this.renderer.setSize(innerWidth, innerHeight);
-      this.slowFor = 0; this.fastFor = 0;
-    }
   }
 
   resize() {
@@ -782,6 +760,5 @@ export class FlightScene {
     const renderAt = performance.now();
     this.renderer.render(this.scene, this.camera);
     this.renderMs = performance.now() - renderAt; // stats for nerds: the draw call's own time
-    this.adaptResolution(dt);
   }
 }
