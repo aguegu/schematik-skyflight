@@ -428,23 +428,29 @@ function makeBirdFlock() {
 }
 
 export class FlightScene {
-  constructor(container) {
-    this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
-    this.mobileQuality = window.matchMedia('(pointer:coarse)').matches;
-    this.maxPixelRatio = Math.min(devicePixelRatio, this.mobileQuality ? 1.5 : 2);
+  // container: an element to draw in, on the page's thread; or null, with
+  // opts.canvas an OffscreenCanvas, in a worker (render-worker.js): its size,
+  // pixel ratio, pointer and motion preference then come in opts, as a
+  // worker has no window
+  constructor(container, opts = {}) {
+    this.offscreen = Boolean(opts.canvas);
+    this.width = opts.width ?? innerWidth; this.height = opts.height ?? innerHeight;
+    this.renderer = new THREE.WebGLRenderer({ canvas: opts.canvas, antialias: true, alpha: false, powerPreference: 'high-performance' });
+    this.mobileQuality = opts.mobile ?? window.matchMedia('(pointer:coarse)').matches;
+    this.maxPixelRatio = Math.min(opts.dpr ?? devicePixelRatio, this.mobileQuality ? 1.5 : 2);
     this.renderer.setPixelRatio(this.maxPixelRatio);
-    this.renderer.setSize(innerWidth, innerHeight);
+    this.renderer.setSize(this.width, this.height, !this.offscreen);
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.05;
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    container.append(this.renderer.domElement);
+    container?.append(this.renderer.domElement);
 
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0xe9e7d9);
     this.scene.fog = new THREE.Fog(0xc8dcce, 195, 1120);
-    this.camera = new THREE.PerspectiveCamera(48, innerWidth / innerHeight, .5, 3500);
+    this.camera = new THREE.PerspectiveCamera(48, this.width / this.height, .5, 3500);
     this.camera.position.set(24, 35, 33);
     this.lookAt = new THREE.Vector3(0, 22, -25);
     this.cameraTarget = new THREE.Vector3();
@@ -549,18 +555,29 @@ export class FlightScene {
     this.lastDistance = 0;
     this.showcase = true;
     this.transform = new THREE.Object3D();
-    this.reducedMotionQuery = window.matchMedia?.('(prefers-reduced-motion: reduce)');
-    this.reducedMotion = Boolean(this.reducedMotionQuery?.matches);
-    this.reducedMotionQuery?.addEventListener?.('change', event => { this.reducedMotion = event.matches; });
-    this.renderer.domElement.addEventListener('webglcontextlost', event => { event.preventDefault(); container.dispatchEvent(new CustomEvent('renderlost')); });
-    window.addEventListener('resize', () => this.resize());
-    this.resize();
+    if (container) {
+      this.reducedMotionQuery = window.matchMedia?.('(prefers-reduced-motion: reduce)');
+      this.reducedMotion = Boolean(this.reducedMotionQuery?.matches);
+      this.reducedMotionQuery?.addEventListener?.('change', event => { this.reducedMotion = event.matches; });
+      window.addEventListener('resize', () => this.resize(innerWidth, innerHeight));
+    } else this.reducedMotion = Boolean(opts.reducedMotion);
+    this.renderer.domElement.addEventListener('webglcontextlost', event => {
+      event.preventDefault();
+      if (opts.onContextLost) opts.onContextLost(); else container.dispatchEvent(new CustomEvent('renderlost'));
+    });
+    this.resize(this.width, this.height);
   }
 
-  resize() {
-    this.camera.aspect = innerWidth / innerHeight;
+  resize(width, height) {
+    this.width = width; this.height = height;
+    this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
-    this.renderer.setSize(innerWidth, innerHeight);
+    this.renderer.setSize(width, height, !this.offscreen);
+  }
+
+  // stats for nerds: the last frame's draw calls and triangles, the pixel ratio
+  glStats() {
+    return { calls: this.renderer.info.render.calls, triangles: this.renderer.info.render.triangles, dpr: this.renderer.getPixelRatio(), w: this.width, h: this.height };
   }
 
   burst(x, y, perfect = false) {

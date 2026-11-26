@@ -3,6 +3,7 @@ import { FlightGame, sensorInput, sensorAttitude, damp, SPEED, RUN_SECONDS } fro
 import { SensorSerial } from './serial.js';
 import { SensorDart } from './dart.js';
 import { FlightScene } from './scene.js';
+import { WorkerScene, canDrawInWorker } from './worker-scene.js';
 import { FlightAudio } from './audio.js';
 
 const $ = id => document.getElementById(id);
@@ -252,13 +253,19 @@ function updateTelemetry(input) {
   $('calibrate-button').disabled = !live;
 }
 
-try { scene = new FlightScene($('world')); }
-catch(error) {
+// the scene drawn in a worker where the browser can (OffscreenCanvas), so a
+// slow GPU frame never holds up the page and the Dart's replies; on the
+// page's own thread otherwise, or with ?inline (to compare)
+function renderError(error) {
   console.error(error);
   const panel = document.createElement('div'); panel.className = 'render-error';
   panel.textContent = 'This sky needs WebGL. Enable hardware acceleration in Chrome or Edge and reload. Your hardware does not need to be connected to try the game.';
   document.body.append(panel); $('start-button').disabled = true;
 }
+const inline = new URLSearchParams(location.search).has('inline') || !canDrawInWorker();
+try { scene = inline ? new FlightScene($('world')) : new WorkerScene($('world'), { night: (() => { try { return localStorage.getItem('skyflight-night') === 'on'; } catch { return false; } })() }); }
+catch(error) { renderError(error); }
+$('world').addEventListener('rendererror', e => renderError(e.detail));
 // night flight: the scene's sky and lights, the page's panels darker; N or the
 // moon button, remembered in the browser
 let night = false;
@@ -309,7 +316,7 @@ function postStats(now, s) {
     scene: (() => { const all = sceneMs.splice(0), r1 = v => Math.round(v * 10) / 10;
       const sum = v => { const x = v.sort((p, q) => p - q); return x.length ? { p50: r1(x[x.length >> 1]), p95: r1(x[Math.floor(x.length * .95)]), max: r1(x.at(-1)) } : null; };
       return all.length ? { n: all.length, update: sum(all.map(([u]) => u)), render: sum(all.map(([, r]) => r)) } : null; })(),
-    renderMsLast: scene?.renderMs, gl: scene ? { calls: scene.renderer.info.render.calls, triangles: scene.renderer.info.render.triangles, dpr: scene.renderer.getPixelRatio(), w: innerWidth, h: innerHeight } : null,
+    renderMsLast: scene?.renderMs, worker: !inline, gl: scene?.glStats() ?? null,
     slow: slow.splice(0), hidden: document.hidden, focus: document.hasFocus(), frames: { n: frameMs.length, max: Math.round(Math.max(0, ...frameMs) * 10) / 10, over33: frameMs.filter(ms => ms > 33.4).length } };
   fetch('./__stats', { method: 'POST', body: JSON.stringify(body), keepalive: true }).catch(() => {});
 }
@@ -359,7 +366,7 @@ function updateNerdStats(input) {
   lines.push(`input     roll ${f(input.roll, 2)}  pitch ${f(input.pitch, 2)}`);
   lines.push(`plane     x ${f(game.x)}  y ${f(game.y)}  vx ${f(game.vx)}  vy ${f(game.vy)}`);
   lines.push(`          bank ${f(-game.roll * rad)}°  pitch ${f(game.pitch * rad)}°  ${game.status}`);
-  lines.push(`render    ${String(frames.length).padStart(3)} fps  draw ${f(scene?.renderMs, 1, 5)} ms  pixels ×${scene ? scene.renderer.getPixelRatio().toFixed(2) : '—'}`);
+  lines.push(`render    ${String(frames.length).padStart(3)} fps  draw ${f(scene?.renderMs, 1, 5)} ms  ${inline ? 'on the page' : 'in a worker'}  pixels ×${scene?.glStats()?.dpr?.toFixed(2) ?? '—'}`);
   $('nerd-text').textContent = lines.join('\n');
   postStats(now, s);
   // the strips, as i2c.ninja's ?perf meter: one bar each, newest at the right
@@ -393,7 +400,7 @@ function animate(now) {
   if(!document.hidden && sceneTime + .001 >= renderInterval) {
     const updateAt = performance.now();
     scene?.update(Math.min(sceneTime, .1),game,serial.live?input:null);
-    sceneMs.push([performance.now() - updateAt, scene?.renderMs ?? 0]);
+    sceneMs.push([inline ? performance.now() - updateAt : scene?.updateMs ?? 0, scene?.renderMs ?? 0]);
     sceneTime = 0;
   } else if(document.hidden) sceneTime = 0;
   uiTime += dt;
