@@ -80,7 +80,7 @@ export class SensorDart extends EventTarget {
       this.stats = {
         via, chip: this.chip, address: imu.address, scl: SCL_HZ,
         firmware: info?.version, protocol: info && `${info.protocol >> 8}.${info.protocol & 0xff}`, id: info?.uniqueId,
-        rtt: 0, rttAvg: 0, rttMax: 0, rtts: [], dt: 0, accel: null, gyro: null, bias: null, readings: 0, phase: 'gyro bias',
+        rtt: 0, rttAvg: 0, rttMax: 0, rtts: [], log: [], dt: 0, accel: null, gyro: null, bias: null, readings: 0, phase: 'gyro bias',
       };
       this.bus = bus;
       this.connected = true;
@@ -112,6 +112,7 @@ export class SensorDart extends EventTarget {
         const now = performance.now();
         st.rtt = now - asked;
         st.rtts.push(st.rtt);
+        st.log.push([Math.round(asked), Math.round(st.rtt * 10) / 10]); // for the dev server's log: when asked, how long
         if (st.rtts.length > STRIP_BARS) st.rtts.shift();
         st.rttAvg = st.readings ? st.rttAvg + (st.rtt - st.rttAvg) * 0.1 : st.rtt;
         rttWindow.push([now, st.rtt]);

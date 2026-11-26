@@ -281,6 +281,20 @@ $('night-button').addEventListener('click', () => { setNight(!night); $('night-b
 // the plane's state. I, or the box in Controller; remembered in the browser
 let nerdStats = false, frames = [], frameTimes = [];
 const STRIP_BARS = 120, STRIP_TOP_MS = 60;
+// to our dev or preview server (vite.config.js, /__stats → /tmp/skyflight-stats.log)
+// every two seconds while the panel is open: each reading's [asked at ms, round trip ms]
+// since the last post, the frame times, the link
+const POST_EVERY_MS = 2000;
+let postedAt = 0;
+function postStats(now, s) {
+  if (now - postedAt < POST_EVERY_MS) return;
+  postedAt = now;
+  const readings = s?.log.splice(0) ?? [];
+  const frameMs = frameTimes.slice(-Math.min(frameTimes.length, Math.round(frames.length * POST_EVERY_MS / 1000)));
+  const body = { via: s?.via ?? null, chip: s?.chip ?? null, rate: serial.rate, status: game.status, fps: frames.length, readings,
+    frames: { n: frameMs.length, max: Math.round(Math.max(0, ...frameMs) * 10) / 10, over33: frameMs.filter(ms => ms > 33.4).length } };
+  fetch('./__stats', { method: 'POST', body: JSON.stringify(body), keepalive: true }).catch(() => {});
+}
 // a strip of bars, one a value (ms), lines at the given ms, coloured by colour(ms)
 function drawStrip(canvas, values, lines, colour) {
   const w = 240, h = 40, dpr = devicePixelRatio || 1;
@@ -329,6 +343,7 @@ function updateNerdStats(input) {
   lines.push(`          bank ${f(-game.roll * rad)}°  pitch ${f(game.pitch * rad)}°  ${game.status}`);
   lines.push(`render    ${String(frames.length).padStart(3)} fps`);
   $('nerd-text').textContent = lines.join('\n');
+  postStats(now, s);
   // the strips, as i2c.ninja's ?perf meter: one bar each, newest at the right
   drawStrip($('strip-frames'), frameTimes, [16.7, 33.4], ms => ms > 33.4 ? '#f87171' : ms > 20 ? '#fbbf24' : '#34d399');
   drawStrip($('strip-readings'), s?.rtts ?? [], [20, 50], ms => ms > 50 ? '#f87171' : ms > 20 ? '#fbbf24' : '#34d399');
