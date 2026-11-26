@@ -19,6 +19,7 @@ const TAU_S = 0.45; // the complementary filter's time constant, as the firmware
 const BIAS_SAMPLES = 50; // about a second, held still
 const DEG_PER_RAD = 180 / Math.PI;
 const STALE_MS = 1200;
+const STRIP_BARS = 120; // the round trips kept for stats for nerds' strip
 // the IMUs it reads, by WHO_AM_I (0x75), at 0x68 (AD0 low) or 0x69: the same
 // registers for what's used here; atiic's drivers know each one's scales
 const REG_WHO_AM_I = 0x75;
@@ -79,7 +80,7 @@ export class SensorDart extends EventTarget {
       this.stats = {
         via, chip: this.chip, address: imu.address, scl: SCL_HZ,
         firmware: info?.version, protocol: info && `${info.protocol >> 8}.${info.protocol & 0xff}`, id: info?.uniqueId,
-        rtt: 0, rttAvg: 0, rttMax: 0, dt: 0, accel: null, gyro: null, bias: null, readings: 0, phase: 'gyro bias',
+        rtt: 0, rttAvg: 0, rttMax: 0, rtts: [], dt: 0, accel: null, gyro: null, bias: null, readings: 0, phase: 'gyro bias',
       };
       this.bus = bus;
       this.connected = true;
@@ -110,6 +111,8 @@ export class SensorDart extends EventTarget {
         const { accelerometers: a, gyroscopes: g } = await imu.measure();
         const now = performance.now();
         st.rtt = now - asked;
+        st.rtts.push(st.rtt);
+        if (st.rtts.length > STRIP_BARS) st.rtts.shift();
         st.rttAvg = st.readings ? st.rttAvg + (st.rtt - st.rttAvg) * 0.1 : st.rtt;
         rttWindow.push([now, st.rtt]);
         rttWindow = rttWindow.filter(([t]) => t > now - 1000);

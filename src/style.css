@@ -44,5 +44,8 @@ body.night .coast-chart{color:#b9c6cf}
 body.night .coast-chart text{fill:#b9c6cf}
 body.night .feedback[data-kind=miss]{background:#16223ad4}
 /* stats for nerds */
-.nerd-stats{position:fixed;z-index:5;top:112px;right:42px;margin:0;padding:12px 14px;max-width:calc(100vw - 32px);overflow:hidden;font:10px/1.55 var(--mono);color:#e8f1ec;background:#0d1b22d9;border:1px solid #ffffff22;border-radius:6px;pointer-events:none;white-space:pre}
+.nerd-stats{position:fixed;z-index:5;top:112px;right:42px;margin:0;padding:12px 14px;max-width:calc(100vw - 32px);overflow:hidden;font:10px/1.55 var(--mono);color:#e8f1ec;background:#0d1b22d9;border:1px solid #ffffff22;border-radius:6px;pointer-events:none;white-space:normal}
 @media(max-width:800px){.nerd-stats{top:88px;right:16px;font-size:8px}}
+.nerd-stats pre{margin:0;font:inherit;white-space:pre}
+.nerd-stats .strip-label{display:block;margin-top:8px;font-size:8px;letter-spacing:.5px;color:#9fb2ac}
+.nerd-stats canvas{display:block;margin-top:3px;background:#ffffff0d;border-radius:2px}

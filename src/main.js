@@ -279,7 +279,21 @@ $('night-button').addEventListener('click', () => { setNight(!night); $('night-b
 // stats for nerds: the controller's link, its chip, each reading's round trip,
 // the raw sensor values and the filter's output; the game's frame rate and
 // the plane's state. I, or the box in Controller; remembered in the browser
-let nerdStats = false, frames = [];
+let nerdStats = false, frames = [], frameTimes = [];
+const STRIP_BARS = 120, STRIP_TOP_MS = 60;
+// a strip of bars, one a value (ms), lines at the given ms, coloured by colour(ms)
+function drawStrip(canvas, values, lines, colour) {
+  const w = 240, h = 40, dpr = devicePixelRatio || 1;
+  if (canvas.width !== w * dpr) { canvas.width = w * dpr; canvas.height = h * dpr; canvas.style.width = `${w}px`; canvas.style.height = `${h}px`; }
+  const g = canvas.getContext('2d');
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.clearRect(0, 0, w, h);
+  const y = ms => h - (Math.min(ms, STRIP_TOP_MS) / STRIP_TOP_MS) * h;
+  g.strokeStyle = 'rgba(255,255,255,0.25)';
+  for (const ms of lines) { g.beginPath(); g.moveTo(0, y(ms)); g.lineTo(w, y(ms)); g.stroke(); }
+  const bar = w / STRIP_BARS, from = STRIP_BARS - values.length;
+  values.forEach((ms, i) => { g.fillStyle = colour(ms); g.fillRect((from + i) * bar, y(ms), Math.max(1, bar - 0.5), h - y(ms)); });
+}
 try { nerdStats = localStorage.getItem('skyflight-nerd-stats') === 'on'; } catch { /* optional */ }
 if(new URLSearchParams(location.search).has('stats')) nerdStats = true; // ?stats
 function setNerdStats(on) {
@@ -314,7 +328,10 @@ function updateNerdStats(input) {
   lines.push(`plane     x ${f(game.x)}  y ${f(game.y)}  vx ${f(game.vx)}  vy ${f(game.vy)}`);
   lines.push(`          bank ${f(-game.roll * rad)}°  pitch ${f(game.pitch * rad)}°  ${game.status}`);
   lines.push(`render    ${String(frames.length).padStart(3)} fps`);
-  $('nerd-stats').textContent = lines.join('\n');
+  $('nerd-text').textContent = lines.join('\n');
+  // the strips, as i2c.ninja's ?perf meter: one bar each, newest at the right
+  drawStrip($('strip-frames'), frameTimes, [16.7, 33.4], ms => ms > 33.4 ? '#f87171' : ms > 20 ? '#fbbf24' : '#34d399');
+  drawStrip($('strip-readings'), s?.rtts ?? [], [20, 50], ms => ms > 50 ? '#f87171' : ms > 20 ? '#fbbf24' : '#34d399');
 }
 $('world').addEventListener('renderlost', () => { pause('Graphics connection lost. Reload this page to restore the sky.'); toast('WebGL context lost. Please reload the page.'); });
 syncUI(); updateTelemetry(smoothInput);
@@ -345,6 +362,7 @@ function animate(now) {
     sceneTime = 0;
   } else if(document.hidden) sceneTime = 0;
   uiTime += dt;
+  if(frames.length) { frameTimes.push(now - frames.at(-1)); if(frameTimes.length > STRIP_BARS) frameTimes.shift(); }
   frames.push(now);
   if(uiTime>.08) { updateTelemetry(input); updateNerdStats(input); uiTime=0; }
   requestAnimationFrame(animate);

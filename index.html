@@ -104,7 +104,11 @@
   </div>
   <div id="toast" role="status"></div>
 
-  <pre id="nerd-stats" class="nerd-stats" hidden aria-label="Stats for nerds"></pre>
+  <aside id="nerd-stats" class="nerd-stats" hidden aria-label="Stats for nerds">
+    <pre id="nerd-text"></pre>
+    <span class="strip-label">frame time · lines 16.7 and 33 ms</span><canvas id="strip-frames" width="240" height="40"></canvas>
+    <span class="strip-label">reading round trip · lines 20 and 50 ms</span><canvas id="strip-readings" width="240" height="40"></canvas>
+  </aside>
   <dialog id="link-dialog" aria-labelledby="link-title">
     <div class="dialog-header"><span class="eyebrow">YOUR CONTROLLER</span><button class="icon-button close-dialog" aria-label="Close">×</button></div>
     <h2 id="link-title">How is your Dart linked?</h2><p>A Dart USB-to-I2C bridge with an MPU6050 or MPU6500 on it. Hold the sensor still for a second after connecting while the gyro settles.</p>
