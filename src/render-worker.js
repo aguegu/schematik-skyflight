@@ -26,7 +26,7 @@ onmessage = ({ data: m }) => {
       postMessage({ type: 'ready' });
       frame(tick);
     } catch (error) {
-      postMessage({ type: 'error', message: error.message });
+      postMessage({ type: 'error', message: `${error.message}\n${error.stack}` });
     }
     return;
   }
