@@ -281,6 +281,7 @@ $('night-button').addEventListener('click', () => { setNight(!night); $('night-b
 // the plane's state. I, or the box in Controller; remembered in the browser
 let nerdStats = false, frames = [];
 try { nerdStats = localStorage.getItem('skyflight-nerd-stats') === 'on'; } catch { /* optional */ }
+if(new URLSearchParams(location.search).has('stats')) nerdStats = true; // ?stats
 function setNerdStats(on) {
   nerdStats = on;
   $('nerd-stats').hidden = !on;
