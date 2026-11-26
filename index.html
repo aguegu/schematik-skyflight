@@ -104,6 +104,7 @@
   </div>
   <div id="toast" role="status"></div>
 
+  <pre id="nerd-stats" class="nerd-stats" hidden aria-label="Stats for nerds"></pre>
   <dialog id="link-dialog" aria-labelledby="link-title">
     <div class="dialog-header"><span class="eyebrow">YOUR CONTROLLER</span><button class="icon-button close-dialog" aria-label="Close">×</button></div>
     <h2 id="link-title">How is your Dart linked?</h2><p>A Dart USB-to-I2C bridge with an MPU6050 or MPU6500 on it. Hold the sensor still for a second after connecting while the gyro settles.</p>
@@ -120,6 +121,7 @@
     <label class="check-label"><input id="invert-roll" type="checkbox" /> Invert roll (left / right)</label>
     <label class="check-label"><input id="invert-pitch" type="checkbox" /> Invert pitch (up / down)</label>
     <label class="check-label"><input id="swap-axes" type="checkbox" /> Swap axes (sensor mounted sideways)</label>
+    <label class="check-label"><input id="nerd-stats-check" type="checkbox" /> Stats for nerds (<kbd>I</kbd>)</label>
     <p class="controller-note"><span aria-hidden="true">⊕</span> Real roll & pitch. Simulated altitude. Your hands do the rest.</p>
     <div class="dialog-footer"><span>115200 BAUD · USB SERIAL</span><button id="disconnect-button" class="text-button" disabled>Disconnect</button></div>
   </dialog>
@@ -127,7 +129,7 @@
   <dialog id="help-dialog" aria-labelledby="help-title">
     <div class="dialog-header"><span class="eyebrow">PREFLIGHT CHECKLIST</span><button class="icon-button close-dialog" aria-label="Close help">×</button></div>
     <h2 id="help-title">Let your hands fly.</h2>
-    <div class="help-grid"><div><b>01 / Pick your flight</b><p>Ring run: 90 seconds, 100 points per ring. Fly through the center for a 50-point bonus. Consecutive hits build up to a 5× multiplier. Free flight: no timer, just explore.</p></div><div><b>02 / Take control</b><p><kbd>W</kbd> / <kbd>↑</kbd> climb · <kbd>S</kbd> / <kbd>↓</kbd> descend<br /><kbd>A</kbd> / <kbd>←</kbd> left · <kbd>D</kbd> / <kbd>→</kbd> right<br /><kbd>P</kbd> / <kbd>Esc</kbd> pause · <kbd>C</kbd> zero sensor · <kbd>M</kbd> sound · <kbd>N</kbd> night</p></div></div>
+    <div class="help-grid"><div><b>01 / Pick your flight</b><p>Ring run: 90 seconds, 100 points per ring. Fly through the center for a 50-point bonus. Consecutive hits build up to a 5× multiplier. Free flight: no timer, just explore.</p></div><div><b>02 / Take control</b><p><kbd>W</kbd> / <kbd>↑</kbd> climb · <kbd>S</kbd> / <kbd>↓</kbd> descend<br /><kbd>A</kbd> / <kbd>←</kbd> left · <kbd>D</kbd> / <kbd>→</kbd> right<br /><kbd>P</kbd> / <kbd>Esc</kbd> pause · <kbd>C</kbd> zero sensor · <kbd>M</kbd> sound · <kbd>N</kbd> night · <kbd>I</kbd> stats</p></div></div>
     <h3>Real tilt. Real hardware.</h3><p>Upload <code>firmware/SchematikFlightController/SchematikFlightController.ino</code> to your ESP32-C6 (USB CDC enabled), then open this page in desktop Chrome or Edge. Close the Arduino Serial Monitor before connecting.</p>
     <table><thead><tr><th>MPU6050 / GY-521</th><th>XIAO ESP32-C6 · verified wiring</th></tr></thead><tbody><tr><td>VCC</td><td>3.3V</td></tr><tr><td>GND</td><td>GND</td></tr><tr><td>SDA · yellow</td><td>D8 / GPIO19</td></tr><tr><td>SCL · orange</td><td>D7 / GPIO17</td></tr><tr><td>AD0</td><td>GND → 0x68</td></tr><tr><td>INT</td><td>Not connected</td></tr></tbody></table>
     <p class="small-copy">Keep the sensor still for 2 seconds at boot. Uno / classic Nano also supported on A4/A5; see README for level-shifter guidance. This is arcade flight: altitude is simulated, not measured by the MPU6050.</p>

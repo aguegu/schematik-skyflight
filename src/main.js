@@ -185,6 +185,7 @@ window.addEventListener('keydown', e => {
   if(key === 'p' || key === 'Escape') { if(game.status === 'running') pause(); else if(game.status === 'paused') resume(); }
   if(key === 'c') calibrate();
   if(key === 'n') setNight(!night);
+  if(key === 'i') setNerdStats(!nerdStats);
   if(key === 'm') toast(audio.toggleMute() ? 'Sound off. M to turn it back on.' : 'Sound on.');
 });
 window.addEventListener('keyup', e => keys.delete(e.key.length === 1 ? e.key.toLowerCase() : e.key));
@@ -275,6 +276,45 @@ function setNight(on) {
 }
 setNight(night);
 $('night-button').addEventListener('click', () => { setNight(!night); $('night-button').blur(); });
+// stats for nerds: the controller's link, its chip, each reading's round trip,
+// the raw sensor values and the filter's output; the game's frame rate and
+// the plane's state. I, or the box in Controller; remembered in the browser
+let nerdStats = false, frames = [];
+try { nerdStats = localStorage.getItem('skyflight-nerd-stats') === 'on'; } catch { /* optional */ }
+function setNerdStats(on) {
+  nerdStats = on;
+  $('nerd-stats').hidden = !on;
+  $('nerd-stats-check').checked = on;
+  try { localStorage.setItem('skyflight-nerd-stats', on ? 'on' : 'off'); } catch { /* optional */ }
+}
+setNerdStats(nerdStats);
+$('nerd-stats-check').addEventListener('change', () => setNerdStats($('nerd-stats-check').checked));
+const f = (v, d = 1, w = 7) => (v === undefined || v === null || !Number.isFinite(v) ? '—' : v.toFixed(d)).padStart(w);
+const xyz = (v, d) => (v ? `${f(v.x, d)} ${f(v.y, d)} ${f(v.z, d)}` : '      —       —       —');
+function updateNerdStats(input) {
+  if(!nerdStats) return;
+  const now = performance.now();
+  frames = frames.filter(t => t > now - 1000);
+  const s = serial.stats, live = serial.live, rad = 180 / Math.PI;
+  const lines = [];
+  if(serial.connected && s) {
+    lines.push(`link      dart over ${s.via === 'ble' ? 'bluetooth' : 'usb'}${s.id ? `  ${s.id}` : ''}`);
+    lines.push(`firmware  ${s.firmware ?? '—'}  protocol ${s.protocol ?? '—'}  i2c ${s.scl / 1000} kHz`);
+    lines.push(`sensor    ${s.chip} at 0x${s.address.toString(16)}  ${s.phase}`);
+    lines.push(`readings  ${String(serial.rate).padStart(3)}/s  round trip ${f(s.rtt, 1, 5)} ms  avg ${f(s.rttAvg, 1, 5)}  max ${f(s.rttMax, 1, 5)}`);
+    lines.push(`step dt   ${f(s.dt, 1, 5)} ms  total ${s.readings}`);
+    lines.push(`accel g   ${xyz(s.accel, 3)}`);
+    lines.push(`gyro °/s  ${xyz(s.gyro, 2)}`);
+    lines.push(`bias °/s  ${s.bias ? `${f(s.bias.x, 2)} ${f(s.bias.y, 2)}` : '—'}`);
+  } else if(serial.connected) lines.push(`link      serial  ${serial.rate}/s`);
+  else lines.push('link      none: keyboard / touch');
+  lines.push(`attitude  roll ${live ? f(serial.sample.roll) : '      —'}°  pitch ${live ? f(serial.sample.pitch) : '      —'}°  zero ${f(zero.roll)} ${f(zero.pitch)}`);
+  lines.push(`input     roll ${f(input.roll, 2)}  pitch ${f(input.pitch, 2)}`);
+  lines.push(`plane     x ${f(game.x)}  y ${f(game.y)}  vx ${f(game.vx)}  vy ${f(game.vy)}`);
+  lines.push(`          bank ${f(-game.roll * rad)}°  pitch ${f(game.pitch * rad)}°  ${game.status}`);
+  lines.push(`render    ${String(frames.length).padStart(3)} fps`);
+  $('nerd-stats').textContent = lines.join('\n');
+}
 $('world').addEventListener('renderlost', () => { pause('Graphics connection lost. Reload this page to restore the sky.'); toast('WebGL context lost. Please reload the page.'); });
 syncUI(); updateTelemetry(smoothInput);
 function animate(now) {
@@ -304,7 +344,8 @@ function animate(now) {
     sceneTime = 0;
   } else if(document.hidden) sceneTime = 0;
   uiTime += dt;
-  if(uiTime>.08) { updateTelemetry(input); uiTime=0; }
+  frames.push(now);
+  if(uiTime>.08) { updateTelemetry(input); updateNerdStats(input); uiTime=0; }
   requestAnimationFrame(animate);
 }
 requestAnimationFrame(animate);

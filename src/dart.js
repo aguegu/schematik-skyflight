@@ -74,6 +74,13 @@ export class SensorDart extends EventTarget {
         throw error;
       }
       this.chip = imu.constructor.chip.name;
+      const info = await bus.info().catch(() => null);
+      // stats for nerds: the link, the chip, each reading's round trip, the raw values
+      this.stats = {
+        via, chip: this.chip, address: imu.address, scl: SCL_HZ,
+        firmware: info?.version, protocol: info && `${info.protocol >> 8}.${info.protocol & 0xff}`, id: info?.uniqueId,
+        rtt: 0, rttAvg: 0, rttMax: 0, dt: 0, accel: null, gyro: null, bias: null, readings: 0, phase: 'gyro bias',
+      };
       this.bus = bus;
       this.connected = true;
       this.sample = null; this.rate = 0; this.timestamps = [];
@@ -95,11 +102,22 @@ export class SensorDart extends EventTarget {
         await delay(PERIOD_MS);
       }
       let roll = null, pitch = 0, last = performance.now();
+      const st = this.stats;
+      st.bias = bias; st.phase = 'flying';
+      let rttWindow = [];
       while (this.connected) {
+        const asked = performance.now();
         const { accelerometers: a, gyroscopes: g } = await imu.measure();
         const now = performance.now();
+        st.rtt = now - asked;
+        st.rttAvg = st.readings ? st.rttAvg + (st.rtt - st.rttAvg) * 0.1 : st.rtt;
+        rttWindow.push([now, st.rtt]);
+        rttWindow = rttWindow.filter(([t]) => t > now - 1000);
+        st.rttMax = Math.max(...rttWindow.map(([, r]) => r));
+        st.accel = a; st.gyro = g; st.readings++;
         const dt = (now - last) / 1000;
         last = now;
+        st.dt = dt * 1000;
         const accelRoll = Math.atan2(a.y, a.z) * DEG_PER_RAD;
         const accelPitch = Math.atan2(-a.x, Math.hypot(a.y, a.z)) * DEG_PER_RAD;
         const alpha = TAU_S / (TAU_S + dt);
